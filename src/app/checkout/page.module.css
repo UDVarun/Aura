@@ -1,0 +1,293 @@
+/* src/app/checkout/page.module.css */
+.page {
+    padding-top: calc(64px + 2rem);
+    padding-bottom: 4rem;
+}
+
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted-light);
+    font-size: var(--text-sm);
+    margin-bottom: 1.5rem;
+    transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+    color: var(--foreground);
+}
+
+.title {
+    font-size: var(--text-4xl);
+    margin-bottom: 2rem;
+}
+
+/* ── Stepper ─────────────────────────────────── */
+.stepper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2.5rem;
+}
+
+.stepRow {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.stepNum {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--secondary);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--muted);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.stepLabel {
+    font-size: var(--text-sm);
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.stepActive .stepNum {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.stepActive .stepLabel {
+    color: var(--foreground);
+}
+
+.stepDone .stepNum {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.stepDone .stepLabel {
+    color: var(--muted-light);
+}
+
+.stepLine {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 0.5rem;
+}
+
+.stepLineDone {
+    background: var(--primary);
+}
+
+/* ── Layout ──────────────────────────────────── */
+.layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+@media (min-width: 1024px) {
+    .layout {
+        grid-template-columns: 1fr 320px;
+    }
+}
+
+.formSection {}
+
+.formCard {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sectionTitle {
+    font-size: var(--text-2xl);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.secureNote {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--text-xs);
+    color: var(--accent);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    width: fit-content;
+    margin-bottom: 0.5rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--muted-light);
+}
+
+.grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.grid3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.btnRow {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.reviewSection {
+    padding: 1rem;
+    background: var(--secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--muted-light);
+    line-height: 1.7;
+}
+
+.reviewLabel {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 0.5rem;
+}
+
+/* ── Mini Summary ────────────────────────────── */
+.miniSummary {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    position: sticky;
+    top: 80px;
+}
+
+.miniSummaryTitle {
+    font-size: var(--text-lg);
+    margin-bottom: 1rem;
+}
+
+.miniLines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+
+.miniLine {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-sm);
+    color: var(--muted-light);
+}
+
+.freeShip {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.miniTotal {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.secureNote2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    font-size: var(--text-xs);
+    color: var(--muted);
+}
+
+/* ── Success ─────────────────────────────────── */
+.successPage {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(64px + 2rem) 1rem 2rem;
+}
+
+.successCard {
+    text-align: center;
+    max-width: 420px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.successIcon {
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+}
+
+.successTitle {
+    font-size: var(--text-4xl);
+    margin-bottom: 0.75rem;
+}
+
+.successText {
+    color: var(--muted-light);
+    margin-bottom: 1rem;
+    line-height: 1.7;
+}
+
+.orderId {
+    font-family: monospace;
+    font-size: var(--text-sm);
+    color: var(--primary);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}

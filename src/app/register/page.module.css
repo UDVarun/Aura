@@ -1,0 +1,262 @@
+/* src/app/register/page.module.css */
+.page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(64px + 2rem) 1rem 2rem;
+}
+
+.formPanel {
+    width: 100%;
+    max-width: 480px;
+}
+
+.formContent {
+    width: 100%;
+}
+
+.logo {
+    font-size: 1.75rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.04em;
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: var(--text-4xl);
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: var(--muted-light);
+    margin-bottom: 1.25rem;
+    font-size: var(--text-sm);
+}
+
+.link {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.link:hover {
+    color: var(--primary-hover);
+}
+
+/* ── Social Auth ───────────────────────────────── */
+.socialSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+}
+
+.socialBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--border);
+}
+
+.socialBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.googleBtn {
+    background: #fff;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.googleBtn:hover:not(:disabled) {
+    background: #f9fafb;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.githubBtn {
+    background: #24292f;
+    color: #fff;
+    border-color: #444c56;
+}
+
+.githubBtn:hover:not(:disabled) {
+    background: #32383f;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.spinner {
+    display: inline-block;
+    font-size: 1rem;
+}
+
+/* ── Divider ───────────────────────────────────── */
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.dividerLine {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.dividerText {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+/* ── Form ──────────────────────────────────────── */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--muted-light);
+}
+
+.inputWrapper {
+    position: relative;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.input {
+    padding-left: 2.5rem !important;
+}
+
+.inputWithAction {
+    padding-right: 2.75rem !important;
+}
+
+.inputError {
+    border-color: var(--danger) !important;
+}
+
+.inputCheck {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    pointer-events: none;
+}
+
+.passwordToggle {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    transition: color var(--transition-fast);
+    padding: 0.25rem;
+}
+
+.passwordToggle:hover {
+    color: var(--foreground);
+}
+
+/* ── Password Strength ─────────────────────────── */
+.passwordStrength {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.strengthBar {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background var(--transition-fast);
+}
+
+.strengthWeak {
+    background: var(--danger);
+}
+
+.strengthMid {
+    background: var(--warning);
+}
+
+.strengthGood {
+    background: var(--accent);
+}
+
+.strengthLabel {
+    font-size: var(--text-xs);
+    color: var(--muted);
+}
+
+/* ── Feedback ──────────────────────────────────── */
+.errorMessage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-md);
+    color: #f87171;
+    font-size: var(--text-sm);
+}
+
+.successMessage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-md);
+    color: #34d399;
+    font-size: var(--text-sm);
+}
+
+.submitBtn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem;
+    font-size: var(--text-base);
+}
+
+.terms {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+}
