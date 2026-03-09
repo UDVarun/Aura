@@ -50,7 +50,7 @@
 
 .statCard {
     background: var(--vendor-sidebar);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 1.25rem;
     transition: transform var(--transition-fast);
@@ -87,8 +87,8 @@
 }
 
 .icon_purple {
-    background: rgba(139, 92, 246, 0.15);
-    color: #a78bfa;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 }
 
 .icon_yellow {
@@ -145,7 +145,7 @@
 
 .section {
     background: var(--vendor-sidebar);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
 }
@@ -155,7 +155,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border);
 }
 
 .sectionTitle {
@@ -179,7 +179,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.9rem 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--border);
     gap: 1rem;
 }
 
@@ -229,7 +229,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.9rem 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--border);
     gap: 1rem;
 }
 

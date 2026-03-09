@@ -1,5 +1,5 @@
 .card {
-    background: var(--card-bg);
+    background: var(--surface-1);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     overflow: hidden;
@@ -7,21 +7,20 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    group: true;
+    min-height: 100%;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
 }
 
 .imageContainer {
     position: relative;
     width: 100%;
     aspect-ratio: 4/5;
-    background-color: #f1f5f9;
-    /* Off-white for product backgrounds */
+    background: var(--surface-2);
     overflow: hidden;
 }
 
@@ -33,7 +32,7 @@
 }
 
 .card:hover .imageWrapper {
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 .image {
@@ -45,7 +44,7 @@
     position: absolute;
     top: 1rem;
     left: 1rem;
-    background-color: var(--accent);
+    background-color: color-mix(in srgb, var(--primary) 78%, var(--foreground));
     color: white;
     font-size: 0.75rem;
     font-weight: 700;
@@ -64,8 +63,8 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: white;
-    color: #64748b;
+    background: var(--surface-1);
+    color: var(--muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -76,7 +75,13 @@
 
 .wishlistButton:hover {
     color: #ef4444;
-    transform: scale(1.1);
+    transform: scale(1.04);
+    background: var(--surface-3);
+}
+
+.wishlistActive {
+    color: #ef4444 !important;
+    background: var(--surface-3);
 }
 
 .quickAdd {
@@ -88,7 +93,7 @@
     transform: translateY(100%);
     transition: transform var(--transition-normal);
     z-index: 10;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+    background: linear-gradient(to top, color-mix(in srgb, var(--surface-overlay) 82%, transparent), transparent);
 }
 
 .card:hover .quickAdd {
@@ -96,11 +101,11 @@
 }
 
 .addToCartBtn {
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
 }
 
 .content {
-    padding: 1.25rem;
+    padding: 1rem 1.05rem 1.1rem;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -121,10 +126,10 @@
 }
 
 .title {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
-    line-height: 1.4;
-    margin-bottom: 1rem;
+    line-height: 1.45;
+    margin-bottom: 0.75rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -141,10 +146,12 @@
     align-items: center;
     justify-content: space-between;
     margin-top: auto;
+    padding-top: 0.65rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
 .price {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--foreground);
 }
@@ -153,9 +160,10 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-2);
     padding: 0.25rem 0.5rem;
     border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
 }
 
 .star {

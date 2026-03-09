@@ -32,7 +32,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // unsafe-eval/inline needed for Next.js dev
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://images.unsplash.com https://plus.unsplash.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://*.supabase.co",
+      "img-src 'self' data: blob: https://images.unsplash.com https://plus.unsplash.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://*.supabase.co https://*.r2.dev",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://api.github.com https://oauth2.googleapis.com",
       "frame-src 'self' https://accounts.google.com https://github.com https://*.supabase.co",
       "frame-ancestors 'none'",
@@ -60,6 +60,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "plus.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.r2.dev",
       },
     ],
   },

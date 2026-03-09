@@ -1,25 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Menu, Search, User, X, LogOut, LayoutDashboard, Store } from "lucide-react";
+import { ShoppingCart, Menu, Search, User, X, LogOut, LayoutDashboard, Store, Settings, CircleUserRound, Sun, Moon, ChevronDown } from "lucide-react";
 import styles from "./Navbar.module.css";
 import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "@/context/ThemeContext";
+import { useCart } from "@/context/CartContext";
 
 const CUSTOMER_NAV = [
-    { href: "/products", label: "Shop" },
-    { href: "/categories", label: "Categories" },
+    { href: "/", label: "Home" },
+    { href: "/products", label: "All" },
+    { href: "/offers", label: "Offers" },
     { href: "/about", label: "About" },
+    { href: "/customer-care", label: "Customer Care" },
 ];
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const { user, logout, isAuthenticated } = useAuth();
+    const { theme, setTheme } = useTheme();
+    const { itemCount, openCart } = useCart();
     const router = useRouter();
+    const pathname = usePathname();
     const userMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -28,7 +36,6 @@ export default function Navbar() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // Close mobile menu on resize to desktop
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 768) setMobileOpen(false);
@@ -37,18 +44,17 @@ export default function Navbar() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Close user menu on outside click
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
             if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
                 setUserMenuOpen(false);
+                setSettingsOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClick);
         return () => document.removeEventListener("mousedown", handleClick);
     }, []);
 
-    // Prevent body scroll when mobile menu is open
     useEffect(() => {
         document.body.style.overflow = mobileOpen ? "hidden" : "";
         return () => { document.body.style.overflow = ""; };
@@ -56,10 +62,11 @@ export default function Navbar() {
 
     const handleLogout = async () => {
         setUserMenuOpen(false);
+        setSettingsOpen(false);
         setMobileOpen(false);
         await logout();
         router.push("/");
-        router.refresh(); // forces middleware to re-evaluate cleared session
+        router.refresh();
     };
 
     const getDashboardLink = () => {
@@ -69,11 +76,12 @@ export default function Navbar() {
     };
 
     const dashboardLink = getDashboardLink();
+    const isNavActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
     return (
         <>
             <header className={clsx(styles.header, { [styles.scrolled]: scrolled })}>
-                <div className={`container ${styles.navContainer}`}>
+                <div className={styles.navContainer}>
                     {/* Left: Logo + Hamburger */}
                     <div className={styles.logoContainer}>
                         <button
@@ -89,10 +97,12 @@ export default function Navbar() {
                         </Link>
                     </div>
 
-                    {/* Center: Desktop Nav */}
+                    {/* Middle-Left: Desktop Nav */}
                     <nav className={styles.desktopNav} aria-label="Main navigation">
                         {CUSTOMER_NAV.map(({ href, label }) => (
-                            <Link key={href} href={href} className={styles.navLink}>{label}</Link>
+                            <Link key={label} href={href} className={clsx(styles.navLink, { [styles.navLinkActive]: isNavActive(href) })}>
+                                {label}
+                            </Link>
                         ))}
                         {dashboardLink && (
                             <Link href={dashboardLink.href} className={clsx(styles.navLink, styles.dashboardLink)}>
@@ -102,12 +112,20 @@ export default function Navbar() {
                         )}
                     </nav>
 
+                    {/* Center: Global Search Bar */}
+                    <div className={styles.globalSearch}>
+                        <div className={styles.searchBox}>
+                            <Search size={16} className={styles.searchIcon} />
+                            <input
+                                type="text"
+                                placeholder="Search products, brands and more..."
+                                className={styles.searchInput}
+                            />
+                        </div>
+                    </div>
+
                     {/* Right: Actions */}
                     <div className={styles.actions}>
-                        <button className={styles.iconButton} aria-label="Search">
-                            <Search size={20} />
-                        </button>
-
                         {/* User Menu */}
                         <div className={styles.userMenuWrapper} ref={userMenuRef}>
                             <button
@@ -135,9 +153,42 @@ export default function Navbar() {
                                                 </Link>
                                             )}
                                             <Link href="/account" className={styles.userMenuItem} onClick={() => setUserMenuOpen(false)}>
-                                                <User size={15} />
-                                                My Account
+                                                <CircleUserRound size={15} />
+                                                Profile
                                             </Link>
+                                            <button
+                                                type="button"
+                                                className={clsx(styles.userMenuItem, styles.settingsTrigger)}
+                                                onClick={() => setSettingsOpen((v) => !v)}
+                                                aria-expanded={settingsOpen}
+                                                aria-controls="theme-settings"
+                                            >
+                                                <span className={styles.settingsLabel}>
+                                                    <Settings size={15} />
+                                                    Settings
+                                                </span>
+                                                <ChevronDown size={14} className={clsx(styles.settingsChevron, { [styles.settingsChevronOpen]: settingsOpen })} />
+                                            </button>
+                                            {settingsOpen && (
+                                                <div className={styles.themeSwitchRow} id="theme-settings">
+                                                    <button
+                                                        type="button"
+                                                        className={theme === "light" ? `${styles.themeChip} ${styles.themeChipActive}` : styles.themeChip}
+                                                        onClick={() => setTheme("light")}
+                                                    >
+                                                        <Sun size={14} />
+                                                        Light
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={theme === "dark" ? `${styles.themeChip} ${styles.themeChipActive}` : styles.themeChip}
+                                                        onClick={() => setTheme("dark")}
+                                                    >
+                                                        <Moon size={14} />
+                                                        Dark
+                                                    </button>
+                                                </div>
+                                            )}
                                             <div className={styles.userMenuDivider} />
                                             <button className={clsx(styles.userMenuItem, styles.logoutItem)} onClick={handleLogout}>
                                                 <LogOut size={15} />
@@ -154,10 +205,10 @@ export default function Navbar() {
                             )}
                         </div>
 
-                        <Link href="/cart" className={styles.cartButton} aria-label="Shopping cart">
+                        <button className={styles.cartButton} aria-label="Shopping cart" onClick={openCart}>
                             <ShoppingCart size={20} />
-                            <span className={styles.cartBadge} aria-label="3 items in cart">3</span>
-                        </Link>
+                            <span className={styles.cartBadge} aria-label={`${itemCount} items in cart`}>{itemCount}</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -174,8 +225,20 @@ export default function Navbar() {
                 aria-hidden={!mobileOpen}
             >
                 <div className={styles.mobileNavContent}>
+                    {/* Mobile Search */}
+                    <div className={styles.mobileSearch}>
+                        <Search size={16} className={styles.searchIcon} />
+                        <input type="text" placeholder="Search..." className={styles.mobileSearchInput} />
+                    </div>
+                    <div className={styles.mobileNavDivider} />
+
                     {CUSTOMER_NAV.map(({ href, label }) => (
-                        <Link key={href} href={href} className={styles.mobileNavLink} onClick={() => setMobileOpen(false)}>
+                        <Link
+                            key={href}
+                            href={href}
+                            className={clsx(styles.mobileNavLink, { [styles.mobileNavLinkActive]: isNavActive(href) })}
+                            onClick={() => setMobileOpen(false)}
+                        >
                             {label}
                         </Link>
                     ))}
@@ -186,11 +249,17 @@ export default function Navbar() {
                         </Link>
                     )}
                     <div className={styles.mobileNavDivider} />
-                    {isAuthenticated ? (
-                        <button className={clsx(styles.mobileNavLink, styles.mobileNavLogout)} onClick={handleLogout}>
-                            <LogOut size={16} />
-                            Sign Out ({user?.name})
-                        </button>
+                    {isAuthenticated && user ? (
+                        <>
+                            <Link href="/account" className={styles.mobileNavLink} onClick={() => setMobileOpen(false)}>
+                                <CircleUserRound size={16} />
+                                Profile
+                            </Link>
+                            <button className={clsx(styles.mobileNavLink, styles.mobileNavLogout)} onClick={handleLogout}>
+                                <LogOut size={16} />
+                                Sign Out ({user.name})
+                            </button>
+                        </>
                     ) : (
                         <>
                             <Link href="/login" className={styles.mobileNavLink} onClick={() => setMobileOpen(false)}>Sign In</Link>

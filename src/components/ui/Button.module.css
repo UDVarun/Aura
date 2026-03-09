@@ -30,14 +30,14 @@
 }
 
 .secondary {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--surface-2);
     color: var(--foreground);
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
 }
 
 .secondary:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: var(--surface-3);
     transform: translateY(-1px);
 }
 
@@ -58,7 +58,7 @@
 }
 
 .ghost:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--surface-hover);
     color: var(--primary);
 }
 

@@ -1,0 +1,205 @@
+/* HeroCarousel.module.css - Premium Minimalist Edition */
+
+.carouselContainer {
+    position: relative;
+    width: 100%;
+    height: 85vh;
+    /* Slightly taller for more impact */
+    min-height: 600px;
+    max-height: 900px;
+    overflow: hidden;
+    background: var(--surface-1);
+}
+
+.slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1.02);
+    pointer-events: none;
+}
+
+.slide.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.backgroundImage {
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Deep, subtle overlay to ensure perfect text contrast without needing a box */
+.overlay {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.2) 0%,
+            rgba(0, 0, 0, 0.0) 30%,
+            rgba(0, 0, 0, 0.6) 80%,
+            rgba(0, 0, 0, 0.8) 100%),
+        radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.content {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    /* Push to bottom */
+    padding-bottom: 8rem;
+    /* Space for indicators */
+    text-align: center;
+    color: white;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.title {
+    font-size: clamp(3rem, 7vw, 6rem);
+    line-height: 1.05;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    /* Optional: sleek gradient text for extra premium feel, or just pure white */
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    margin-bottom: 2.5rem;
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 600px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.ctaButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.1rem 2.8rem;
+    background: #ffffff;
+    color: #000000;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.ctaButton:hover {
+    transform: translateY(-2px) scale(1.02);
+    background: #f8f9fa;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Navigation Arrows ── */
+.navButton {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 20;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.navButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.prev {
+    left: 3rem;
+}
+
+.next {
+    right: 3rem;
+}
+
+/* ── Indicators ── */
+.indicators {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.dot {
+    width: 48px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+
+.dotActive {
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 768px) {
+    .carouselContainer {
+        height: 75vh;
+    }
+
+    .content {
+        padding-bottom: 6rem;
+    }
+
+    .title {
+        margin-bottom: 1rem;
+    }
+
+    .subtitle {
+        margin-bottom: 2rem;
+    }
+
+    .navButton {
+        display: none;
+        /* Hide arrows on mobile for cleaner look */
+    }
+
+    .prev,
+    .next {
+        display: none;
+    }
+
+    .dot {
+        width: 32px;
+    }
+}

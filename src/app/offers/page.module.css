@@ -1,0 +1,182 @@
+.page {
+  padding-top: 68px;
+  padding-bottom: 4rem;
+}
+
+.badge {
+  display: inline-flex;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--foreground);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.hero {
+  padding: 4.4rem 0 2.5rem;
+  text-align: center;
+}
+
+.heroInner {
+  max-width: 760px;
+}
+
+.title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  color: var(--muted-light);
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.heroActions {
+  margin-top: 1.3rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.secondaryBtn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.secondaryBtn:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+}
+
+.offerSection {
+  padding: 1rem 0 2rem;
+}
+
+.offerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.offerCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.offerIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offerCard h2 {
+  font-size: var(--text-lg);
+}
+
+.offerCard p {
+  color: var(--muted-light);
+}
+
+.codeChip {
+  margin-top: 0.2rem;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px dashed color-mix(in srgb, var(--primary) 54%, var(--border));
+  border-radius: var(--radius-full);
+  padding: 0.36rem 0.72rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.flashSection {
+  padding-top: 1.2rem;
+}
+
+.sectionHeader {
+  margin-bottom: 1rem;
+}
+
+.sectionHeader h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  margin-bottom: 0.35rem;
+}
+
+.sectionHeader p {
+  color: var(--muted-light);
+}
+
+.flashGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.flashCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  padding: 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.flashLabel {
+  color: var(--muted-light);
+  font-size: var(--text-sm);
+}
+
+.flashDiscount {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.flashUntil {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.flashLink {
+  margin-top: 0.4rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.flashLink:hover {
+  color: var(--primary);
+}
+
+@media (max-width: 1100px) {
+  .offerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .flashGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .flashGrid {
+    grid-template-columns: 1fr;
+  }
+}

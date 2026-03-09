@@ -9,7 +9,7 @@ export default function Footer() {
                 <div className={styles.footerSection}>
                     <h3 className={styles.brandName}>Aura</h3>
                     <p className={styles.description}>
-                        Experience the next generation of premium online shopping. Curated collections for the modern lifestyle.
+                        A premium commerce experience with curated technology and living essentials for modern professionals.
                     </p>
                     <div className={styles.socialLinks}>
                         <a href="#" aria-label="Facebook"><Facebook size={20} /></a>
@@ -23,28 +23,28 @@ export default function Footer() {
                     <h4 className={styles.sectionTitle}>Shop</h4>
                     <ul className={styles.linkList}>
                         <li><Link href="/products">All Products</Link></li>
-                        <li><Link href="/categories/electronics">Electronics</Link></li>
-                        <li><Link href="/categories/fashion">Fashion</Link></li>
-                        <li><Link href="/categories/home">Home & Living</Link></li>
+                        <li><Link href="/products?category=tech">Electronics</Link></li>
+                        <li><Link href="/products?category=fashion">Fashion</Link></li>
+                        <li><Link href="/products?category=home">Home & Living</Link></li>
                     </ul>
                 </div>
 
                 <div className={styles.footerSection}>
                     <h4 className={styles.sectionTitle}>Support</h4>
                     <ul className={styles.linkList}>
+                        <li><Link href="/customer-care">Customer Care</Link></li>
                         <li><Link href="/faq">FAQ</Link></li>
                         <li><Link href="/shipping">Shipping & Returns</Link></li>
-                        <li><Link href="/contact">Contact Us</Link></li>
                         <li><Link href="/track">Track Order</Link></li>
                     </ul>
                 </div>
 
                 <div className={styles.footerSection}>
-                    <h4 className={styles.sectionTitle}>Newsletter</h4>
-                    <p className={styles.newsletterDesc}>Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.</p>
+                    <h4 className={styles.sectionTitle}>Journal</h4>
+                    <p className={styles.newsletterDesc}>Get product drops, design notes, and curated recommendations from Aura.</p>
                     <form className={styles.newsletterForm}>
-                        <input type="email" placeholder="Enter your email" required className={styles.input} />
-                        <button type="submit" className={styles.button}>Subscribe</button>
+                        <input type="email" placeholder="Work email" required className={styles.input} />
+                        <button type="submit" className={styles.button}>Join</button>
                     </form>
                 </div>
             </div>

@@ -1,6 +1,6 @@
 /* src/app/checkout/page.module.css */
 .page {
-    padding-top: calc(64px + 2rem);
+    padding-top: calc(68px + 1.8rem);
     padding-bottom: 4rem;
 }
 
@@ -20,14 +20,14 @@
 
 .title {
     font-size: var(--text-4xl);
-    margin-bottom: 2rem;
+    margin-bottom: 1.4rem;
 }
 
 /* ── Stepper ─────────────────────────────────── */
 .stepper {
     display: flex;
     align-items: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.8rem;
 }
 
 .stepRow {
@@ -102,7 +102,7 @@
 .layout {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 1.4rem;
     align-items: flex-start;
 }
 
@@ -115,10 +115,10 @@
 .formSection {}
 
 .formCard {
-    background: var(--card-bg);
+    background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem 2rem;
+    border-radius: var(--radius-xl);
+    padding: 1.25rem 1.4rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -138,7 +138,7 @@
     gap: 0.4rem;
     font-size: var(--text-xs);
     color: var(--accent);
-    background: rgba(16, 185, 129, 0.1);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-md);
     width: fit-content;
@@ -177,7 +177,7 @@
 
 .reviewSection {
     padding: 1rem;
-    background: var(--secondary);
+    background: var(--surface-2);
     border-radius: var(--radius-md);
     border: 1px solid var(--border);
     font-size: var(--text-sm);
@@ -194,12 +194,13 @@
 
 /* ── Mini Summary ────────────────────────────── */
 .miniSummary {
-    background: var(--card-bg);
+    background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+    padding: 1.25rem;
     position: sticky;
-    top: 80px;
+    top: 92px;
+    box-shadow: var(--shadow-sm);
 }
 
 .miniSummaryTitle {
@@ -257,10 +258,10 @@
 .successCard {
     text-align: center;
     max-width: 420px;
-    background: var(--card-bg);
+    background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    padding: 3rem 2rem;
+    border-radius: 1.25rem;
+    padding: 2.4rem 1.6rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -286,8 +287,8 @@
     font-family: monospace;
     font-size: var(--text-sm);
     color: var(--primary);
-    background: rgba(59, 130, 246, 0.1);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
     padding: 0.4rem 1rem;
     border-radius: var(--radius-full);
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
 }

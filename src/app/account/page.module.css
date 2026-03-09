@@ -1,0 +1,137 @@
+.page {
+    padding: 7rem 0 4rem;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 980px;
+}
+
+.header {
+    margin-bottom: 1.5rem;
+}
+
+.kicker {
+    display: inline-block;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.8rem;
+}
+
+.title {
+    font-size: clamp(1.8rem, 4vw, 2.4rem);
+    margin-bottom: 0.45rem;
+}
+
+.subtitle {
+    color: var(--muted);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.cardTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1.05rem;
+}
+
+.profileRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.profileRow:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.label {
+    color: var(--muted);
+    font-size: var(--text-sm);
+}
+
+.value {
+    font-weight: 600;
+    color: var(--foreground);
+    text-align: right;
+}
+
+.badge {
+    text-transform: capitalize;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.helpText {
+    color: var(--muted);
+    margin-bottom: 0.9rem;
+}
+
+.toggleRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.modeBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-weight: 600;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.modeBtn:hover {
+    color: var(--foreground);
+    border-color: var(--primary);
+}
+
+.modeBtnActive {
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface-2));
+    border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+}
+
+.cta {
+    display: inline-flex;
+    margin-top: 1rem;
+    padding: 0.7rem 1rem;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+}
+
+.cta:hover {
+    color: #fff;
+    background: var(--primary-hover);
+}

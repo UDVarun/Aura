@@ -1,0 +1,90 @@
+/* HorizontalScroller.module.css */
+
+.section {
+    padding: 3rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.title {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: var(--text-sm);
+    color: var(--muted);
+    margin-top: 0.2rem;
+}
+
+.controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.scrollBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--muted-light);
+    transition: all var(--transition-fast);
+}
+
+.scrollBtn:hover {
+    background: var(--surface-hover);
+    color: var(--foreground);
+    border-color: var(--primary);
+}
+
+.scrollWrapper {
+    /* We want the scroll container to overflow the standard centered container visually */
+    padding-left: max(1rem, calc((100vw - 1200px) / 2));
+    padding-right: 1rem;
+}
+
+.scrollContainer {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    /* Firefox */
+    padding: 0.5rem 0 2rem;
+    /* padding bottom for shadow */
+}
+
+.scrollContainer::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+/* Make children snap and have uniform width */
+.scrollContainer>* {
+    scroll-snap-align: start;
+    min-width: 280px;
+    max-width: 300px;
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .scrollContainer>* {
+        min-width: 320px;
+    }
+}

@@ -100,12 +100,37 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
+.productCell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.productThumb,
+.productThumbPlaceholder {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.productThumbPlaceholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
 .productName {
     color: var(--foreground);
     font-weight: 500;
-    max-width: 200px;
+    max-width: 250px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .price {
@@ -211,4 +236,35 @@
     display: flex;
     flex-direction: column;
     gap: 0.05rem;
+}
+
+.loadingState,
+.errorState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    background: var(--admin-sidebar);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 1rem;
+    color: var(--muted);
+}
+
+.emptyCell {
+    text-align: center !important;
+    padding: 3rem !important;
+    color: var(--muted);
+    font-style: italic;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
 }

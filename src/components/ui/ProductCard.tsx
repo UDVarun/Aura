@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingCart } from "lucide-react";
 import styles from "./ProductCard.module.css";
 import { Button } from "./Button";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 export interface Product {
     id: string;
@@ -19,12 +23,21 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+    const { addItem } = useCart();
+    const { toggleWishlist, isInWishlist } = useWishlist();
+
+    const isLiked = isInWishlist(product.id);
+
     return (
         <div className={styles.card}>
             <div className={styles.imageContainer}>
                 {product.isNew && <span className={styles.badge}>New</span>}
-                <button className={styles.wishlistButton} aria-label="Add to wishlist">
-                    <Heart size={18} />
+                <button
+                    className={`${styles.wishlistButton} ${isLiked ? styles.wishlistActive : ""}`}
+                    aria-label="Add to wishlist"
+                    onClick={() => toggleWishlist(product.id)}
+                >
+                    <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
                 </button>
                 <div className={styles.imageWrapper}>
                     <Image
@@ -36,7 +49,21 @@ export function ProductCard({ product }: ProductCardProps) {
                     />
                 </div>
                 <div className={styles.quickAdd}>
-                    <Button variant="primary" fullWidth size="sm" className={styles.addToCartBtn}>
+                    <Button
+                        variant="primary"
+                        fullWidth
+                        size="sm"
+                        className={styles.addToCartBtn}
+                        onClick={() =>
+                            addItem({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                image: product.image,
+                                category: product.category,
+                            })
+                        }
+                    >
                         <ShoppingCart size={16} /> Add to Cart
                     </Button>
                 </div>
@@ -44,7 +71,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
             <div className={styles.content}>
                 <div className={styles.category}>{product.category}</div>
-                <Link href={`/product/${product.id}`} className={styles.titleLink}>
+                <Link href={`/products/${product.id}`} className={styles.titleLink}>
                     <h3 className={styles.title}>{product.name}</h3>
                 </Link>
                 <div className={styles.priceRow}>

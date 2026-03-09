@@ -93,13 +93,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } = await supabase.auth.getSession();
 
             if (initialSession?.user) {
-                const role = await fetchRole(initialSession.user.id);
+                // Try to get role from cookie synchronously to prevent UI blocking
+                const cookies = document.cookie.split(";");
+                const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
+                let role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+
+                // Set user immediately with cached/default role so UI renders instantly
                 setUser(buildAuthUser(initialSession.user, role));
                 setSession(initialSession);
-                // Sync role cookie for middleware
-                document.cookie = `role=${role}; path=/; SameSite=Strict`;
+                setIsLoading(false);
+
+                // Fetch actual role in background to ensure it's up-to-date
+                const actualRole = await fetchRole(initialSession.user.id);
+                if (actualRole !== role) {
+                    setUser(buildAuthUser(initialSession.user, actualRole));
+                    document.cookie = `role=${actualRole}; path=/; SameSite=Strict`;
+                }
+            } else {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         init();
@@ -109,10 +121,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(async (event, newSession) => {
             if (newSession?.user) {
-                const role = await fetchRole(newSession.user.id);
+                // Read from cookie first
+                const cookies = document.cookie.split(";");
+                const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
+                let role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+
                 setUser(buildAuthUser(newSession.user, role));
                 setSession(newSession);
-                document.cookie = `role=${role}; path=/; SameSite=Strict`;
+
+                const actualRole = await fetchRole(newSession.user.id);
+                if (actualRole !== role) {
+                    setUser(buildAuthUser(newSession.user, actualRole));
+                    document.cookie = `role=${actualRole}; path=/; SameSite=Strict`;
+                }
             } else {
                 setUser(null);
                 setSession(null);

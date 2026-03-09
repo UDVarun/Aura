@@ -14,12 +14,17 @@
 
 .formContent {
     width: 100%;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 1.4rem;
 }
 
 .logo {
     font-size: 1.75rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #fff 0%, #93c5fd 100%);
+    background: linear-gradient(135deg, var(--foreground) 0%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -76,25 +81,25 @@
 }
 
 .googleBtn {
-    background: #fff;
-    color: #374151;
-    border-color: #d1d5db;
+    background: var(--surface-1);
+    color: var(--foreground);
+    border-color: var(--border);
 }
 
 .googleBtn:hover:not(:disabled) {
-    background: #f9fafb;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    background: var(--surface-3);
+    box-shadow: var(--shadow-sm);
 }
 
 .githubBtn {
-    background: #24292f;
-    color: #fff;
-    border-color: #444c56;
+    background: var(--surface-2);
+    color: var(--foreground);
+    border-color: var(--border);
 }
 
 .githubBtn:hover:not(:disabled) {
-    background: #32383f;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    background: var(--surface-3);
+    box-shadow: var(--shadow-sm);
 }
 
 .spinner {
@@ -228,8 +233,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     border-radius: var(--radius-md);
     color: #f87171;
     font-size: var(--text-sm);
@@ -240,8 +245,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
     border-radius: var(--radius-md);
     color: #34d399;
     font-size: var(--text-sm);
@@ -250,8 +255,28 @@
 .submitBtn {
     width: 100%;
     justify-content: center;
-    padding: 0.85rem;
+    padding: 0.95rem;
     font-size: var(--text-base);
+    margin-top: 0.5rem;
+    border-radius: 9999px;
+    background: #000000;
+    color: #ffffff;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.submitBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    background: #1a1a1a;
+}
+
+.submitBtn:disabled {
+    background: var(--surface-3);
+    color: var(--muted);
+    box-shadow: none;
 }
 
 .terms {

@@ -12,9 +12,12 @@ export async function middleware(request: NextRequest) {
     // Refresh the Supabase session on every request (required by @supabase/ssr)
     const { supabaseResponse, user, supabase } = await updateSession(request);
 
-    // Fetch role from user_roles table if user is logged in
-    let role: string | null = null;
-    if (user) {
+    // Faster role resolution: trust the cookie primarily to avoid blocking DB queries on every request.
+    let role = request.cookies.get("role")?.value ?? null;
+
+    // Strict check for protected routes or if cookie is missing but user is logged in
+    const isProtectedRoute = pathname.startsWith(ADMIN_PREFIX) || pathname.startsWith(VENDOR_PREFIX);
+    if (user && (!role || isProtectedRoute)) {
         const { data } = await supabase
             .from("user_roles")
             .select("role")
@@ -28,12 +31,13 @@ export async function middleware(request: NextRequest) {
             sameSite: "strict",
             httpOnly: false,
         });
-    } else {
+    } else if (!user) {
         // Clear role cookie when logged out
         supabaseResponse.cookies.set("role", "", {
             path: "/",
             maxAge: 0,
         });
+        role = null;
     }
 
     // 1. Protect Admin routes
