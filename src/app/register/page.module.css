@@ -240,6 +240,14 @@
     font-size: var(--text-sm);
 }
 
+.errorLink {
+    text-decoration: underline;
+    color: inherit;
+    font-weight: 700;
+    display: block;
+    margin-top: 0.25rem;
+}
+
 .successMessage {
     display: flex;
     align-items: center;
@@ -284,4 +292,42 @@
     color: var(--muted);
     text-align: center;
     line-height: 1.6;
+}
+
+/* ── Role Tabs ────────────────────────────────── */
+.roleTabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background: var(--surface-3);
+    border-radius: var(--radius-lg);
+    margin-bottom: 0.5rem;
+}
+
+.roleTab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--muted-light);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: none;
+    background: transparent;
+}
+
+.roleTab:hover:not(.roleTabActive) {
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--surface-1) 50%, transparent);
+}
+
+.roleTabActive {
+    background: var(--surface-1);
+    color: var(--foreground);
+    box-shadow: var(--shadow-sm);
 }

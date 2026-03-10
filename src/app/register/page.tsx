@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle, Briefcase, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import styles from "./page.module.css";
 
@@ -32,6 +32,7 @@ export default function RegisterPage() {
         email: "",
         password: "",
         confirmPassword: "",
+        role: "customer" as "customer" | "vendor",
     });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
@@ -39,8 +40,9 @@ export default function RegisterPage() {
     const [oauthLoading, setOauthLoading] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [autoLoggedIn, setAutoLoggedIn] = useState(false);
+    const [info, setInfo] = useState("");
 
-    const { register, loginWithProvider } = useAuth();
+    const { register, loginWithProvider, resendConfirmation } = useAuth();
     const router = useRouter();
 
     const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -49,6 +51,7 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setInfo("");
 
         if (form.password !== form.confirmPassword) {
             setError("Passwords don't match.");
@@ -60,7 +63,7 @@ export default function RegisterPage() {
         }
 
         setIsLoading(true);
-        const result = await register(form.name, form.email, form.password);
+        const result = await register(form.name, form.email, form.password, form.role);
 
         if (!result.success) {
             setError(result.error || "Registration failed. Please try again.");
@@ -70,17 +73,39 @@ export default function RegisterPage() {
 
         setSuccess(true);
         if (result.sessionCreated) {
-            // Email confirmation is OFF → user is already logged in, go straight to home
+            // Email confirmation is OFF → user is already logged in, go straight to home or specialized onboarding
             setAutoLoggedIn(true);
-            setTimeout(() => router.push("/"), 800);
+            setTimeout(() => {
+                if (form.role === "vendor") {
+                    router.push("/become-vendor");
+                } else {
+                    router.push("/");
+                }
+            }, 800);
         }
         // If email confirmation is ON: user stays on page seeing the "check email" message
+    };
+
+    const handleResendConfirmation = async () => {
+        setError("");
+        setInfo("");
+        setIsLoading(true);
+
+        const result = await resendConfirmation(form.email);
+        if (!result.success) {
+            setError(result.error || "Unable to resend confirmation email.");
+            setIsLoading(false);
+            return;
+        }
+
+        setInfo("Confirmation email sent again. Check inbox, spam, and promotions.");
+        setIsLoading(false);
     };
 
     const handleOAuth = async (provider: "google" | "github") => {
         setOauthLoading(provider);
         setError("");
-        const result = await loginWithProvider(provider);
+        const result = await loginWithProvider(provider, form.role);
         if (!result.success) {
             setError(result.error || `${provider} sign-up failed.`);
             setOauthLoading(null);
@@ -128,6 +153,24 @@ export default function RegisterPage() {
                     </div>
 
                     <form onSubmit={handleSubmit} className={styles.form} noValidate>
+                        <div className={styles.roleTabs}>
+                            <button
+                                type="button"
+                                className={`${styles.roleTab} ${form.role === "customer" ? styles.roleTabActive : ""}`}
+                                onClick={() => setForm(f => ({ ...f, role: "customer" }))}
+                            >
+                                <UserIcon size={16} />
+                                <span>Personal Account</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`${styles.roleTab} ${form.role === "vendor" ? styles.roleTabActive : ""}`}
+                                onClick={() => setForm(f => ({ ...f, role: "vendor" }))}
+                            >
+                                <Briefcase size={16} />
+                                <span>Business Account</span>
+                            </button>
+                        </div>
                         <div className={styles.field}>
                             <label htmlFor="name" className={styles.label}>Full Name</label>
                             <div className={styles.inputWrapper}>
@@ -221,7 +264,16 @@ export default function RegisterPage() {
 
                         {error && (
                             <div className={styles.errorMessage} role="alert">
-                                <AlertCircle size={15} /> {error}
+                                <AlertCircle size={15} />
+                                {error.includes("rate limit") ? (
+                                    <span>
+                                        <strong>Email rate limit exceeded.</strong> This is a Supabase security measure.
+                                        <br />
+                                        <Link href="https://supabase.com/dashboard/project/_/auth/providers" target="_blank" className={styles.errorLink}>
+                                            Turn off &quot;Confirm email&quot; in your Supabase Dashboard
+                                        </Link> to bypass this for testing.
+                                    </span>
+                                ) : error}
                             </div>
                         )}
 
@@ -231,6 +283,24 @@ export default function RegisterPage() {
                                 {autoLoggedIn
                                     ? " Account created! Taking you home..."
                                     : " Account created! Check your email to confirm, then sign in."}
+                            </div>
+                        )}
+
+                        {success && !autoLoggedIn && (
+                            <button
+                                type="button"
+                                className={`btn btn-secondary ${styles.submitBtn}`}
+                                onClick={handleResendConfirmation}
+                                disabled={isLoading || !!oauthLoading}
+                            >
+                                Resend Confirmation Email
+                            </button>
+                        )}
+
+                        {info && (
+                            <div className={styles.successMessage} role="status">
+                                <CheckCircle size={15} />
+                                {info}
                             </div>
                         )}
 

@@ -38,43 +38,102 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartLoading, setIsCartLoading] = useState(true);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const pathname = usePathname();
+
+  const ensureCart = useCallback(async () => {
+    if (!user) return null;
+
+    const { data: existingCart, error: existingCartError } = await supabase
+      .from("carts")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingCartError) {
+      console.warn("Cart container unavailable, continuing with account-linked cart items.");
+      return null;
+    }
+
+    if (existingCart?.id) {
+      return existingCart.id as string;
+    }
+
+    const { data, error } = await supabase
+      .from("carts")
+      .insert({
+        user_id: user.id,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Cart container could not be created, continuing with account-linked cart items.");
+      return null;
+    }
+
+    return data?.id ?? null;
+  }, [supabase, user]);
+
+  const fetchCart = useCallback(async () => {
+    if (!user) return;
+
+    setIsCartLoading(true);
+    const { data, error } = await supabase
+      .from("cart_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setItems(
+        data.map((row) => ({
+          id: row.product_id,
+          name: row.product_name,
+          price: row.product_price,
+          image: row.product_image,
+          category: row.product_category,
+          quantity: row.quantity,
+        }))
+      );
+    }
+
+    setIsCartLoading(false);
+  }, [supabase, user]);
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!isAuthenticated || !user) {
-      setItems([]);
-      setIsCartLoading(false);
+      queueMicrotask(() => {
+        setItems([]);
+        setIsCartLoading(false);
+      });
       return;
     }
 
-    const fetchCart = async () => {
-      setIsCartLoading(true);
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select("*")
-        .eq("user_id", user.id);
+    void ensureCart().then(() => fetchCart());
+  }, [authLoading, ensureCart, fetchCart, isAuthenticated, user]);
 
-      if (!error && data) {
-        setItems(
-          data.map((row) => ({
-            id: row.product_id,
-            name: row.product_name,
-            price: row.product_price,
-            image: row.product_image,
-            category: row.product_category,
-            quantity: row.quantity,
-          }))
-        );
-      }
-      setIsCartLoading(false);
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`cart-items-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cart_items", filter: `user_id=eq.${user.id}` },
+        () => void fetchCart()
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
     };
-
-    fetchCart();
-  }, [user, isAuthenticated, authLoading, supabase]);
+  }, [fetchCart, supabase, user]);
 
   const addItem = useCallback(
     async (input: AddCartItemInput) => {
@@ -87,6 +146,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const qty = Math.max(1, input.quantity ?? 1);
       const existingItem = items.find((p) => p.id === input.id);
       const newTotalQty = existingItem ? existingItem.quantity + qty : qty;
+      const cartId = await ensureCart();
 
       // Optimistic UI update
       setItems((prev) => {
@@ -105,6 +165,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .from("cart_items")
         .upsert(
           {
+            cart_id: cartId,
             user_id: user.id,
             product_id: input.id,
             product_name: input.name,
@@ -123,7 +184,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to add item to DB cart:", error);
       }
     },
-    [user, isAuthenticated, items, supabase, router, pathname]
+    [user, isAuthenticated, items, supabase, router, pathname, ensureCart]
   );
 
   const removeItem = useCallback(

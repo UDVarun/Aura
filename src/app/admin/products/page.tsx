@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Plus, Search, Edit, Trash2, Filter, Package, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency } from "@/lib/currency";
+import { deleteProductImage } from "@/lib/supabase/storage";
 import styles from "./page.module.css";
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -12,9 +15,22 @@ const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     low_stock: { label: "Low Stock", cls: "badge-yellow" },
 };
 
+interface AdminProductRow {
+    id: string;
+    title: string;
+    price: number | string;
+    stock_quantity: number;
+    image_url?: string | null;
+    categories?: { name?: string | null } | null;
+}
+
+function getErrorMessage(err: unknown) {
+    return err instanceof Error ? err.message : String(err);
+}
+
 export default function AdminProductsPage() {
     const supabase = createClient();
-    const [products, setProducts] = useState<any[]>([]);
+    const [products, setProducts] = useState<AdminProductRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,9 +44,9 @@ export default function AdminProductsPage() {
 
                 if (error) throw error;
                 setProducts(data || []);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Error fetching products:", err);
-                setError(err.message);
+                setError(getErrorMessage(err));
             } finally {
                 setLoading(false);
             }
@@ -39,19 +55,23 @@ export default function AdminProductsPage() {
         fetchProducts();
     }, [supabase]);
 
-    const handleDelete = async (id: string, imageUrl: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
 
         try {
+            const productToDelete = products.find(p => p.id === id);
+
             const { error } = await supabase.from("products").delete().eq("id", id);
             if (error) throw error;
 
-            // Note: Ideally we would also delete from R2 here, but that requires a server-side call
-            // for security. We'll stick to DB deletion for now or add a cleanup API later.
+            // Delete associated image from Supabase Storage
+            if (productToDelete?.image_url) {
+                await deleteProductImage(supabase, productToDelete.image_url);
+            }
 
             setProducts(products.filter(p => p.id !== id));
-        } catch (err: any) {
-            alert("Delete failed: " + err.message);
+        } catch (err) {
+            alert("Delete failed: " + getErrorMessage(err));
         }
     };
 
@@ -100,18 +120,26 @@ export default function AdminProductsPage() {
                             <tbody>
                                 {products.map((p) => {
                                     const stockStatus = p.stock_quantity === 0 ? "out_of_stock" : p.stock_quantity < 5 ? "low_stock" : "active";
+                                    const priceValue =
+                                        typeof p.price === "number" ? p.price : parseFloat(p.price ?? "0");
                                     return (
                                         <tr key={p.id} className={styles.tableRow}>
                                             <td className={styles.productCell}>
                                                 {p.image_url ? (
-                                                    <img src={p.image_url} alt="" className={styles.productThumb} />
+                                                    <Image
+                                                        src={p.image_url}
+                                                        alt={p.title}
+                                                        width={56}
+                                                        height={56}
+                                                        className={styles.productThumb}
+                                                    />
                                                 ) : (
                                                     <div className={styles.productThumbPlaceholder}><Package size={14} /></div>
                                                 )}
                                                 <span className={styles.productName}>{p.title}</span>
                                             </td>
                                             <td>{p.categories?.name || "Uncategorized"}</td>
-                                            <td className={styles.price}>${parseFloat(p.price).toFixed(2)}</td>
+                                            <td className={styles.price}>{formatCurrency(priceValue)}</td>
                                             <td className={p.stock_quantity === 0 ? styles.stockZero : p.stock_quantity < 5 ? styles.stockLow : styles.stockOk}>{p.stock_quantity}</td>
                                             <td><span className={`badge ${STATUS_MAP[stockStatus].cls}`}>{STATUS_MAP[stockStatus].label}</span></td>
                                             <td>
@@ -120,7 +148,7 @@ export default function AdminProductsPage() {
                                                     <button
                                                         className={`${styles.actionBtn} ${styles.deleteBtn}`}
                                                         aria-label="Delete"
-                                                        onClick={() => handleDelete(p.id, p.image_url)}
+                                                        onClick={() => handleDelete(p.id)}
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -131,7 +159,7 @@ export default function AdminProductsPage() {
                                 })}
                                 {products.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className={styles.emptyCell}>No products found. Click "Add Product" to get started.</td>
+                                        <td colSpan={6} className={styles.emptyCell}>No products found. Click &quot;Add Product&quot; to get started.</td>
                                     </tr>
                                 )}
                             </tbody>

@@ -7,6 +7,7 @@ import styles from "./ProductCard.module.css";
 import { Button } from "./Button";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { formatCurrency } from "@/lib/currency";
 
 export interface Product {
     id: string;
@@ -75,7 +76,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     <h3 className={styles.title}>{product.name}</h3>
                 </Link>
                 <div className={styles.priceRow}>
-                    <span className={styles.price}>${product.price.toFixed(2)}</span>
+                    <span className={styles.price}>{formatCurrency(product.price)}</span>
                     <div className={styles.rating}>
                         <span className={styles.star}>★</span>
                         <span className={styles.ratingText}>{product.rating}</span>

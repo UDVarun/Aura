@@ -1,31 +1,63 @@
-import { Search, Eye } from "lucide-react";
+import { Search } from "lucide-react";
 import styles from "../products/page.module.css";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-const MY_ORDERS = [
-    { id: "#ORD-1921", customer: "Alex Johnson", product: "Sony WH-1000XM5", amount: "$398.00", date: "Mar 8, 2026", status: "delivered" },
-    { id: "#ORD-1920", customer: "Maria Garcia", product: "Smart Home Speaker", amount: "$249.50", date: "Mar 8, 2026", status: "processing" },
-    { id: "#ORD-1917", customer: "Mike Torres", product: "Wireless Earbuds", amount: "$199.00", date: "Mar 6, 2026", status: "shipped" },
-];
+interface VendorOrderRow {
+    id: string;
+    product_title: string;
+    quantity: number;
+    line_total: number;
+    status: string;
+    shipment_status: string;
+    created_at: string;
+    orders?: {
+        order_number?: string | null;
+        shipping_address?: {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+        } | null;
+    } | null;
+}
 
 const STATUS_MAP: Record<string, string> = {
     delivered: "badge-green",
     processing: "badge-blue",
     shipped: "badge-yellow",
+    placed: "badge-yellow",
+    cancelled: "badge-red",
+    disputed: "badge-red",
+    refund_requested: "badge-red",
 };
 
-export default function VendorOrdersPage() {
+export default async function VendorOrdersPage() {
+    const supabase = await createServerSupabase();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data } = user
+        ? await supabase
+              .from("order_items")
+              .select("id, product_title, quantity, line_total, status, shipment_status, created_at, orders(order_number, shipping_address)")
+              .eq("vendor_id", user.id)
+              .order("created_at", { ascending: false })
+        : { data: [] };
+
+    const orders = (data as VendorOrderRow[] | null) ?? [];
+
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
                 <div>
                     <h1 className={styles.pageTitle}>My Orders</h1>
-                    <p className={styles.pageSubtitle}>{MY_ORDERS.length} orders for your products</p>
+                    <p className={styles.pageSubtitle}>{orders.length} order lines require vendor visibility.</p>
                 </div>
             </div>
             <div className={styles.toolbar}>
                 <div className={styles.searchWrap}>
                     <Search size={15} className={styles.searchIcon} />
-                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} />
+                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} readOnly />
                 </div>
             </div>
             <div className={styles.tableCard}>
@@ -39,21 +71,33 @@ export default function VendorOrdersPage() {
                                 <th>Date</th>
                                 <th>Amount</th>
                                 <th>Status</th>
-                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {MY_ORDERS.map((o) => (
-                                <tr key={o.id} className={styles.tableRow}>
-                                    <td><span className={styles.orderId}>{o.id}</span></td>
-                                    <td><span className={styles.customer}>{o.customer}</span></td>
-                                    <td className={styles.productName}>{o.product}</td>
-                                    <td>{o.date}</td>
-                                    <td><span className={styles.amount}>{o.amount}</span></td>
-                                    <td><span className={`badge ${STATUS_MAP[o.status]}`}>{o.status}</span></td>
-                                    <td><button className={styles.actionBtn} aria-label="View"><Eye size={14} /></button></td>
+                            {orders.map((order) => {
+                                const shipping = order.orders?.shipping_address;
+                                const customerName = [shipping?.firstName, shipping?.lastName].filter(Boolean).join(" ") || "Aura customer";
+                                return (
+                                    <tr key={order.id} className={styles.tableRow}>
+                                        <td><span className={styles.orderId}>{order.orders?.order_number ?? order.id}</span></td>
+                                        <td>
+                                            <div>
+                                                <span className={styles.customer}>{customerName}</span>
+                                                <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{shipping?.email ?? ""}</div>
+                                            </div>
+                                        </td>
+                                        <td className={styles.productName}>{order.product_title}</td>
+                                        <td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td>
+                                        <td><span className={styles.amount}>₹{Number(order.line_total).toLocaleString("en-IN")}</span></td>
+                                        <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.shipment_status}</span></td>
+                                    </tr>
+                                );
+                            })}
+                            {orders.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className={styles.emptyCell}>No vendor orders yet.</td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>

@@ -19,34 +19,58 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const router = useRouter();
     const pathname = usePathname();
+
+    const fetchWishlist = useCallback(async () => {
+        if (!user) return;
+
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from("wishlists")
+            .select("product_id")
+            .eq("user_id", user.id);
+
+        if (!error && data) {
+            setWishlistIds(data.map((row) => row.product_id));
+        }
+
+        setIsLoading(false);
+    }, [supabase, user]);
 
     useEffect(() => {
         if (authLoading) return;
 
         if (!isAuthenticated || !user) {
-            setWishlistIds([]);
-            setIsLoading(false);
+            queueMicrotask(() => {
+                setWishlistIds([]);
+                setIsLoading(false);
+            });
             return;
         }
 
-        const fetchWishlist = async () => {
-            setIsLoading(true);
-            const { data, error } = await supabase
-                .from("wishlists")
-                .select("product_id")
-                .eq("user_id", user.id);
+        queueMicrotask(() => {
+            void fetchWishlist();
+        });
+    }, [user, isAuthenticated, authLoading, fetchWishlist]);
 
-            if (!error && data) {
-                setWishlistIds(data.map((row) => row.product_id));
-            }
-            setIsLoading(false);
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel(`wishlist-${user.id}`)
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "wishlists", filter: `user_id=eq.${user.id}` },
+                () => void fetchWishlist()
+            )
+            .subscribe();
+
+        return () => {
+            void supabase.removeChannel(channel);
         };
-
-        fetchWishlist();
-    }, [user, isAuthenticated, authLoading, supabase]);
+    }, [fetchWishlist, supabase, user]);
 
     const toggleWishlist = useCallback(
         async (productId: string) => {

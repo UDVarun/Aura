@@ -1,0 +1,236 @@
+.shell {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+    box-shadow: var(--shadow-md);
+}
+
+.panelHeader {
+    padding: 1rem 1rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.panelTitle {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.panelSubtitle {
+    margin-top: 0.35rem;
+    color: var(--muted-light);
+    font-size: var(--text-sm);
+}
+
+.caseList {
+    display: grid;
+}
+
+.caseCard {
+    text-align: left;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.caseCard:hover,
+.caseCardActive {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.caseMeta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 0.45rem;
+}
+
+.caseNumber {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.badgeRow {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.caseSubject {
+    font-weight: 600;
+}
+
+.casePreview {
+    margin-top: 0.25rem;
+    font-size: var(--text-sm);
+    color: var(--muted-light);
+}
+
+.threadPanel {
+    display: grid;
+    min-height: 680px;
+}
+
+.threadLayout {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 680px;
+}
+
+.threadHeader {
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.threadTitle {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.threadMeta {
+    margin-top: 0.35rem;
+    color: var(--muted-light);
+    font-size: var(--text-sm);
+}
+
+.threadActions {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.messages {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    align-content: start;
+    overflow-y: auto;
+}
+
+.message {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 0.95rem;
+    max-width: 85%;
+    background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+}
+
+.messageCustomer {
+    justify-self: start;
+}
+
+.messageVendor {
+    justify-self: end;
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+}
+
+.messageAdmin {
+    justify-self: start;
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+    background: color-mix(in srgb, var(--primary) 7%, var(--surface-2));
+}
+
+.messageRole {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 0.35rem;
+}
+
+.messageBody {
+    line-height: 1.7;
+}
+
+.messageTime {
+    margin-top: 0.45rem;
+    font-size: 0.78rem;
+    color: var(--muted-light);
+}
+
+.composer {
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 0.75rem;
+}
+
+.composerRow {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.statusSelect {
+    min-width: 180px;
+}
+
+.form {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.formTitle {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.emptyState {
+    padding: 1.2rem;
+    color: var(--muted-light);
+}
+
+.feedback {
+    color: var(--muted-light);
+    font-size: var(--text-sm);
+}
+
+@media (max-width: 980px) {
+    .shell {
+        grid-template-columns: 1fr;
+    }
+
+    .threadPanel,
+    .threadLayout {
+        min-height: auto;
+    }
+
+    .messages {
+        max-height: 420px;
+    }
+}
+
+@media (max-width: 640px) {
+    .formGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .message {
+        max-width: 100%;
+    }
+}

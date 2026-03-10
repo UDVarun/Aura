@@ -7,6 +7,12 @@ import styles from "./page.module.css";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
+import {
+  formatCurrency,
+  FREE_SHIPPING_THRESHOLD,
+  SHIPPING_FEE,
+  GST_RATE,
+} from "@/lib/currency";
 
 const STEPS = ["Shipping", "Payment", "Review"];
 
@@ -15,6 +21,8 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(0);
   const [placed, setPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -24,62 +32,90 @@ export default function CheckoutPage() {
     city: "",
     state: "",
     zip: "",
-    country: "US",
+    country: "India",
     cardName: "",
     cardNumber: "",
     expiry: "",
     cvv: "",
+    upiId: "",
   });
+  const [paymentMode, setPaymentMode] = useState<"upi" | "card">("upi");
 
   const { user } = useAuth();
   const supabase = createClient();
 
   // Load user profile data to pre-fill checkout
   useEffect(() => {
-    if (user) {
-      // Pre-fill email initially
-      setForm((f) => ({ ...f, email: user.email || "" }));
+    if (!user) return;
 
-      const loadProfile = async () => {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
+    const loadProfile = async () => {
+      queueMicrotask(() => {
+        setForm((f) => ({ ...f, email: user.email || "" }));
+      });
 
-        if (data && !error) {
-          setForm((f) => ({
-            ...f,
-            firstName: data.first_name || "",
-            lastName: data.last_name || "",
-            phone: data.phone || "",
-            address: data.address || "",
-            city: data.city || "",
-            state: data.state || "",
-            zip: data.zip || "",
-            country: data.country || "US",
-          }));
-        }
-      };
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
 
-      loadProfile();
-    }
+      if (data && !error) {
+        setForm((f) => ({
+          ...f,
+          firstName: data.first_name || "",
+          lastName: data.last_name || "",
+          phone: data.phone || "",
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          zip: data.zip || "",
+          country: data.country || "India",
+          upiId: data.upi_id || f.upiId,
+        }));
+      }
+    };
+
+    loadProfile();
   }, [user, supabase]);
 
   const set =
     (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const shipping = subtotal > 500 || subtotal === 0 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+  const tax = subtotal * GST_RATE;
   const total = subtotal + shipping + tax;
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedId = `AUR-${Date.now().toString().slice(-6)}`;
-    setOrderId(generatedId);
-    setPlaced(true);
-    clearCart();
+    setSubmitError("");
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          paymentMethod: paymentMode,
+          shippingAmount: shipping,
+          taxAmount: tax,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to place order.");
+      }
+
+      setOrderId(payload.orderNumber || payload.orderId);
+      setPlaced(true);
+      await clearCart();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to place order.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (placed) {
@@ -128,7 +164,7 @@ export default function CheckoutPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (step === 2) {
-                handlePlaceOrder(e);
+                await handlePlaceOrder(e);
               } else if (step === 0 && user) {
                 // Persist shipping information securely to user profile on advance
                 await supabase.from("user_profiles").upsert({
@@ -195,29 +231,107 @@ export default function CheckoutPage() {
 
             {step === 1 && (
               <div className={styles.formCard}>
-                <h2 className={styles.sectionTitle}><CreditCard size={20} /> Payment Details</h2>
-                <div className={styles.secureNote}><Lock size={13} /> Your payment info is encrypted and secure</div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Name on Card</label>
-                  <input type="text" className="input" value={form.cardName} onChange={set("cardName")} placeholder="John Doe" required />
+                <h2 className={styles.sectionTitle}>
+                  <CreditCard size={20} /> Payment Details
+                </h2>
+                <div
+                  className={styles.paymentModes}
+                  role="group"
+                  aria-label="Choose payment method"
+                >
+                  <button
+                    type="button"
+                    className={`${styles.paymentModeBtn} ${paymentMode === "upi" ? styles.paymentModeActive : ""}`}
+                    onClick={() => setPaymentMode("upi")}
+                  >
+                    UPI / NetBanking
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.paymentModeBtn} ${paymentMode === "card" ? styles.paymentModeActive : ""}`}
+                    onClick={() => setPaymentMode("card")}
+                  >
+                    Credit / Debit Card
+                  </button>
                 </div>
-                <div className={styles.field}>
-                  <label className={styles.label}>Card Number</label>
-                  <input type="text" className="input" value={form.cardNumber} onChange={set("cardNumber")} placeholder="4242 4242 4242 4242" maxLength={19} required />
+                <div className={styles.secureNote}>
+                  <Lock size={13} /> Your payment info is encrypted and secure
                 </div>
-                <div className={styles.grid2}>
+                {paymentMode === "upi" ? (
                   <div className={styles.field}>
-                    <label className={styles.label}>Expiry</label>
-                    <input type="text" className="input" value={form.expiry} onChange={set("expiry")} placeholder="MM/YY" maxLength={5} required />
+                    <label className={styles.label}>UPI ID / Virtual Payment Address</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={form.upiId}
+                      onChange={set("upiId")}
+                      placeholder="you@okaxis"
+                      required
+                    />
+                    <p className={styles.helpText}>
+                      We accept UPI, net banking, Paytm, and other Indian wallets.
+                    </p>
                   </div>
-                  <div className={styles.field}>
-                    <label className={styles.label}>CVV</label>
-                    <input type="text" className="input" value={form.cvv} onChange={set("cvv")} placeholder="***" maxLength={4} required />
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className={styles.field}>
+                      <label className={styles.label}>Name on Card</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={form.cardName}
+                        onChange={set("cardName")}
+                        placeholder="Anaya Singh"
+                        required
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.label}>Card Number</label>
+                      <input
+                        type="text"
+                        className="input"
+                        value={form.cardNumber}
+                        onChange={set("cardNumber")}
+                        placeholder="4111 1111 1111 1111"
+                        maxLength={19}
+                        required
+                      />
+                    </div>
+                    <div className={styles.grid2}>
+                      <div className={styles.field}>
+                        <label className={styles.label}>Expiry</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={form.expiry}
+                          onChange={set("expiry")}
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          required
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.label}>CVV</label>
+                        <input
+                          type="text"
+                          className="input"
+                          value={form.cvv}
+                          onChange={set("cvv")}
+                          placeholder="***"
+                          maxLength={4}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div className={styles.btnRow}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}>Back</button>
-                  <button type="submit" className="btn btn-primary">Review Order</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}>
+                    Back
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Review Order
+                  </button>
                 </div>
               </div>
             )}
@@ -233,11 +347,22 @@ export default function CheckoutPage() {
                 </div>
                 <div className={styles.reviewSection}>
                   <h3 className={styles.reviewLabel}>Payment</h3>
-                  <p>Card ending in {form.cardNumber.slice(-4) || "****"}</p>
+                  <p>
+                    {paymentMode === "upi"
+                      ? `UPI ID ${form.upiId || "—"}`
+                      : `Card ending in ${form.cardNumber.slice(-4) || "****"}`}
+                  </p>
                 </div>
+                {submitError && (
+                  <div className={styles.secureNote} role="alert">
+                    {submitError}
+                  </div>
+                )}
                 <div className={styles.btnRow}>
                   <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>Back</button>
-                  <button type="submit" className="btn btn-primary"><Lock size={15} /> Place Order - ${total.toFixed(2)}</button>
+                  <button type="submit" className="btn btn-primary" disabled={submitting}>
+                    <Lock size={15} /> {submitting ? "Processing..." : `Place Order - ${formatCurrency(total)}`}
+                  </button>
                 </div>
               </div>
             )}
@@ -247,19 +372,31 @@ export default function CheckoutPage() {
             <h3 className={styles.miniSummaryTitle}>Order Total</h3>
             <div className={styles.miniLines}>
               {items.length === 0 ? (
-                <div className={styles.miniLine}><span>No items in cart</span><span>$0.00</span></div>
+                <div className={styles.miniLine}>
+                  <span>No items in cart</span>
+                  <span>{formatCurrency(0)}</span>
+                </div>
               ) : (
                 items.map((item) => (
                   <div key={item.id} className={styles.miniLine}>
                     <span>{item.name} x {item.quantity}</span>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    <span>{formatCurrency(item.price * item.quantity)}</span>
                   </div>
                 ))
               )}
-              <div className={styles.miniLine}><span>Shipping</span><span>{shipping === 0 ? <span className={styles.freeShip}>Free</span> : `$${shipping.toFixed(2)}`}</span></div>
-              <div className={styles.miniLine}><span>Tax</span><span>${tax.toFixed(2)}</span></div>
+              <div className={styles.miniLine}>
+                <span>Shipping</span>
+                <span>{shipping === 0 ? <span className={styles.freeShip}>Free</span> : formatCurrency(shipping)}</span>
+              </div>
+              <div className={styles.miniLine}>
+                <span>Tax</span>
+                <span>{formatCurrency(tax)}</span>
+              </div>
             </div>
-            <div className={styles.miniTotal}><span>Total</span><span>${total.toFixed(2)}</span></div>
+            <div className={styles.miniTotal}>
+              <span>Total</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
             <p className={styles.secureNote2}><Lock size={12} /> 256-bit SSL Encryption</p>
           </aside>
         </div>

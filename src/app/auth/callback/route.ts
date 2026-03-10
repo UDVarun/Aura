@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const next = requestUrl.searchParams.get("next") ?? "/";
 
     if (code) {
-        const supabase = await createClient();
+        const supabase = await createServerSupabase(request);
 
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -19,14 +19,30 @@ export async function GET(request: NextRequest) {
             } = await supabase.auth.getUser();
 
             if (user) {
-                // Look up the user's role
+                const requestedRole = requestUrl.searchParams.get("role");
+                const finalRole = (requestedRole === "vendor" || requestedRole === "customer")
+                    ? requestedRole
+                    : "customer";
+
+                // Look up the user's current role
                 const { data: roleData } = await supabase
-                    .from("user_roles")
+                    .from("profiles")
                     .select("role")
                     .eq("id", user.id)
                     .single();
 
-                const role = roleData?.role ?? "customer";
+                let role = roleData?.role;
+
+                // If no role exists (new user), or if a specific role was requested and user is not an admin
+                if (!role || (requestedRole && role !== "admin")) {
+                    const upsertRole = role === "admin" ? "admin" : finalRole;
+                    await supabase.from("profiles").upsert({
+                        id: user.id,
+                        email: user.email,
+                        role: upsertRole,
+                    });
+                    role = upsertRole;
+                }
 
                 // Redirect based on role (unless a specific redirect was requested)
                 if (next !== "/") {

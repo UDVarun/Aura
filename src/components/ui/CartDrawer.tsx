@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import clsx from "clsx";
+import { formatCurrency, FREE_SHIPPING_THRESHOLD, SHIPPING_FEE, GST_RATE } from "@/lib/currency";
 
 export default function CartDrawer() {
     const { items, isOpen, closeCart, updateQuantity, removeItem, subtotal } = useCart();
@@ -34,7 +35,9 @@ export default function CartDrawer() {
 
     if (!isOpen) return null;
 
-    const total = subtotal + (subtotal > 500 || subtotal === 0 ? 0 : 9.99) + (subtotal * 0.08);
+    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+    const tax = subtotal * GST_RATE;
+    const total = subtotal + shipping + tax;
 
     return (
         <>
@@ -67,7 +70,7 @@ export default function CartDrawer() {
                                     </div>
                                     <div className={styles.itemDetails}>
                                         <h3 className={styles.itemName}>{item.name}</h3>
-                                        <span className={styles.itemPrice}>${item.price.toFixed(2)}</span>
+                                        <span className={styles.itemPrice}>{formatCurrency(item.price)}</span>
 
                                         <div className={styles.itemActions}>
                                             <div className={styles.qtyControl}>
@@ -85,7 +88,7 @@ export default function CartDrawer() {
                                         </div>
                                     </div>
                                     <div className={styles.itemTotal}>
-                                        ${(item.price * item.quantity).toFixed(2)}
+                                        {formatCurrency(item.price * item.quantity)}
                                     </div>
                                 </div>
                             ))}
@@ -97,17 +100,19 @@ export default function CartDrawer() {
                     <div className={styles.footer}>
                         <div className={styles.subtotalRow}>
                             <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span>{formatCurrency(subtotal)}</span>
                         </div>
                         <p className={styles.shippingNote}>
-                            {subtotal > 500 ? "You qualify for free shipping!" : `Add ${(500 - subtotal).toFixed(2)} more for free shipping`}
+                            {subtotal >= FREE_SHIPPING_THRESHOLD
+                                ? "You qualify for free shipping!"
+                                : `Add ${formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping`}
                         </p>
                         <div className={styles.actions}>
                             <button className={clsx("btn btn-secondary", styles.actionBtn)} onClick={closeCart}>
                                 Continue Shopping
                             </button>
                             <Link href="/checkout" className={clsx("btn btn-primary", styles.actionBtn)} onClick={closeCart}>
-                                Checkout - ${total.toFixed(2)}
+                                Checkout - {formatCurrency(total)}
                             </Link>
                         </div>
                     </div>

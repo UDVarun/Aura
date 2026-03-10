@@ -8,14 +8,18 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { AccountDataProvider } from "@/context/AccountDataContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+
+export const viewport = {
+  themeColor: "#0f172a",
+};
 
 export const metadata: Metadata = {
   title: "Aura | Premium E-Commerce",
   description: "Discover a curated collection of premium lifestyle and tech products. Shop headphones, keyboards, home decor, and more.",
   keywords: ["ecommerce", "premium", "lifestyle", "electronics", "home decor"],
-  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
@@ -28,14 +32,16 @@ export default function RootLayout({
       <body className={inter.variable}>
         <ThemeProvider>
           <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <Navbar />
-                <CartDrawer />
-                <main>{children}</main>
-                <Footer />
-              </WishlistProvider>
-            </CartProvider>
+            <AccountDataProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <Navbar />
+                  <CartDrawer />
+                  <main>{children}</main>
+                  <Footer />
+                </WishlistProvider>
+              </CartProvider>
+            </AccountDataProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

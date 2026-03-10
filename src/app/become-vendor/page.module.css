@@ -1,0 +1,53 @@
+.becomeVendorPage {
+    padding: 4rem 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.card {
+    width: min(640px, 100%);
+    background: var(--card-background, #fff);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.title {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.lead {
+    color: rgba(15, 23, 42, 0.8);
+    margin-bottom: 1.5rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.input {
+    width: 100%;
+}
+
+.message {
+    color: #d97706;
+    font-size: 0.95rem;
+}
+
+.status {
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: #1d4ed8;
+}

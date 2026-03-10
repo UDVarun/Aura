@@ -10,29 +10,33 @@ import clsx from "clsx";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
+import { formatCurrency, INR_SYMBOL } from "@/lib/currency";
 
-const CATEGORIES = ["All", "Tech", "Audio", "Wearables", "Fashion", "Home", "Decor"];
 const BRANDS = ["Sony", "Aura", "Logitech", "Herman Miller", "Apple"];
-const CATEGORY_QUERY_MAP: Record<string, string> = {
-  All: "all",
-  Tech: "tech",
-  Audio: "audio",
-  Wearables: "wearables",
-  Fashion: "fashion",
-  Home: "home",
-  Decor: "decor",
-};
 
-const QUERY_CATEGORY_MAP: Record<string, string> = {
-  all: "All",
-  tech: "Tech",
-  electronics: "Tech",
-  audio: "Audio",
-  wearables: "Wearables",
-  fashion: "Fashion",
-  home: "Home",
-  decor: "Decor",
-};
+const shortNumberFormatter = new Intl.NumberFormat("en-IN");
+const formatShortCurrency = (value: number) => `${INR_SYMBOL}${shortNumberFormatter.format(value)}`;
+
+type PriceFilterOption = "all" | "under5000" | "5000to15000" | "above15000";
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  slug: string | null;
+}
+
+interface ProductRow {
+  id: string;
+  title: string;
+  price: number | string;
+  is_featured?: boolean | null;
+  image_url?: string | null;
+  categories?: { name?: string | null; slug?: string | null } | null;
+}
+
+function getErrorMessage(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
 
 function StarRating({ rating, count }: { rating: number; count?: number }) {
   return (
@@ -59,61 +63,74 @@ function ProductsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [priceFilter, setPriceFilter] = useState<"all" | "under100" | "100to300" | "above300">("all");
+  const [priceFilter, setPriceFilter] = useState<PriceFilterOption>("all");
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
-  const selectedCategory = QUERY_CATEGORY_MAP[searchParams.get("category")?.toLowerCase() ?? "all"] ?? "All";
+  const selectedCategory = searchParams.get("category")?.toLowerCase() ?? "all";
 
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchData() {
       try {
-        const { data, error } = await supabase
-          .from("products")
-          .select("*, categories(name)");
-        if (error) throw error;
-        setProducts(data || []);
-      } catch (err: any) {
+        const [{ data: productData, error: productError }, { data: categoryData, error: categoryError }] = await Promise.all([
+          supabase
+            .from("products")
+            .select("*, categories(name, slug)"),
+          supabase
+            .from("categories")
+            .select("id, name, slug")
+            .order("name"),
+        ]);
+
+        if (productError) throw productError;
+        if (categoryError) throw categoryError;
+        setProducts(productData || []);
+        setCategories(categoryData || []);
+      } catch (err) {
         console.error("Error fetching products:", err);
-        setError(err.message);
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
     }
-    fetchProducts();
+    fetchData();
   }, [supabase]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]));
   };
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = (categorySlug: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    const queryValue = CATEGORY_QUERY_MAP[category] ?? "all";
-    if (queryValue === "all") {
+    if (categorySlug === "all") {
       params.delete("category");
     } else {
-      params.set("category", queryValue);
+      params.set("category", categorySlug);
     }
     router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
   };
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const categoryMatch = selectedCategory === "All" || product.categories?.name === selectedCategory;
+      const productCategorySlug = product.categories?.slug?.toLowerCase() ?? "";
+      const categoryMatch = selectedCategory === "all" || productCategorySlug === selectedCategory;
       // Note: brand is not in our SQL schema yet, using "Aura" as default for now or matching if present
       const brandMatch = selectedBrands.length === 0 || selectedBrands.includes("Aura");
 
-      const price = parseFloat(product.price);
+      const price =
+        typeof product.price === "number"
+          ? product.price
+          : parseFloat(product.price?.toString() ?? "0");
       const priceMatch =
         priceFilter === "all" ||
-        (priceFilter === "under100" && price < 100) ||
-        (priceFilter === "100to300" && price >= 100 && price <= 300) ||
-        (priceFilter === "above300" && price > 300);
+        (priceFilter === "under5000" && price < 5000) ||
+        (priceFilter === "5000to15000" && price >= 5000 && price <= 15000) ||
+        (priceFilter === "above15000" && price > 15000);
 
       // Rating is not in schema yet, assuming 4.5 for new products
       const qualityMatch = qualityFilter === "all" || qualityFilter === "premium";
@@ -135,14 +152,16 @@ function ProductsContent() {
           <div className={styles.main}>
             <div className={styles.filterBar}>
               <div className={styles.categoryStrip} aria-label="Product categories">
-                {CATEGORIES.map((cat) => (
+                {[{ id: "all", name: "All", slug: "all" }, ...categories].map((cat) => (
                   <button
-                    key={cat}
+                    key={cat.id}
                     type="button"
-                    className={clsx(styles.filterChip, styles.categoryChip, { [styles.filterChipActive]: cat === selectedCategory })}
-                    onClick={() => handleCategoryChange(cat)}
+                    className={clsx(styles.filterChip, styles.categoryChip, {
+                      [styles.filterChipActive]: (cat.slug ?? "all") === selectedCategory,
+                    })}
+                    onClick={() => handleCategoryChange(cat.slug ?? "all")}
                   >
-                    {cat}
+                    {cat.name}
                   </button>
                 ))}
               </div>
@@ -192,9 +211,9 @@ function ProductsContent() {
                     <h4>Price</h4>
                     <div className={styles.filterChipRow}>
                       <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "all" })} onClick={() => setPriceFilter("all")}>All</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "under100" })} onClick={() => setPriceFilter("under100")}>Under $100</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "100to300" })} onClick={() => setPriceFilter("100to300")}>$100-$300</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "above300" })} onClick={() => setPriceFilter("above300")}>$300+</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "under5000" })} onClick={() => setPriceFilter("under5000")}>Under {formatShortCurrency(5000)}</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "5000to15000" })} onClick={() => setPriceFilter("5000to15000")}>{formatShortCurrency(5000)}-{formatShortCurrency(15000)}</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "above15000" })} onClick={() => setPriceFilter("above15000")}>{formatShortCurrency(15000)}+</button>
                     </div>
                   </div>
 
@@ -227,50 +246,55 @@ function ProductsContent() {
               </div>
             ) : (
               <div className={styles.grid}>
-                {filteredProducts.map((product) => (
-                  <Link href={`/products/${product.id}`} key={product.id} className={styles.card}>
-                    <div className={styles.imageWrapper}>
-                      <Image
-                        src={product.image_url || "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop"}
-                        alt={product.title}
-                        fill
-                        className={styles.image}
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                      {product.is_featured && <span className={styles.badge}>Featured</span>}
-                    </div>
-                    <div className={styles.cardBody}>
-                      <div className={styles.cardTop}>
-                        <div className={styles.metaRow}>
-                          <span className={styles.brand}>Aura</span>
-                          <span className={styles.category}>{product.categories?.name}</span>
-                        </div>
-                        <h2 className={styles.cardName}>{product.title}</h2>
-                        <div className={styles.ratingRow}>
-                          <StarRating rating={4.5} count={12} />
-                        </div>
-                        <div className={styles.priceRow}>${parseFloat(product.price).toFixed(2)}</div>
-                        <p className={styles.deliveryText}>Premium shipping included</p>
+                {filteredProducts.map((product) => {
+                  const priceStr = String(product.price || "0").replace(/[^0-9.]/g, "");
+                  const priceValue = parseFloat(priceStr) || 0;
+                  return (
+                    <Link href={`/products/${product.id}`} key={product.id} className={styles.card}>
+                      <div className={styles.imageWrapper}>
+                        <Image
+                          src={product.image_url || "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop"}
+                          alt={product.title}
+                          fill
+                          className={styles.image}
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                        {product.is_featured && <span className={styles.badge}>Featured</span>}
                       </div>
-                      <button
-                        className={styles.addBtn}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          addItem({
-                            id: product.id,
-                            name: product.title,
-                            price: parseFloat(product.price),
-                            image: product.image_url,
-                            category: product.categories?.name,
-                          });
-                          openCart();
-                        }}
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  </Link>
-                ))}
+                      <div className={styles.cardBody}>
+                        <div className={styles.cardTop}>
+                          <div className={styles.metaRow}>
+                            <span className={styles.brand}>Aura</span>
+                            <span className={styles.category}>{product.categories?.name}</span>
+                          </div>
+                          <h2 className={styles.cardName}>{product.title}</h2>
+                          <div className={styles.ratingRow}>
+                            <StarRating rating={4.5} count={12} />
+                          </div>
+                          <div className={styles.priceRow}>{formatCurrency(priceValue)}</div>
+                          <p className={styles.deliveryText}>Premium shipping included</p>
+                        </div>
+                        <button
+                          className={styles.addBtn}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const imageUrl = product.image_url ?? "";
+                            addItem({
+                              id: product.id,
+                              name: product.title,
+                              price: priceValue,
+                              image: imageUrl,
+                              category: product.categories?.name ?? "",
+                            });
+                            openCart();
+                          }}
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

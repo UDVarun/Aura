@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Tag } from "lucide-react";
 import styles from "./page.module.css";
 import { useCart } from "@/context/CartContext";
+import { formatCurrency, FREE_SHIPPING_THRESHOLD, SHIPPING_FEE, GST_RATE } from "@/lib/currency";
 
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
 
-  const shipping = subtotal > 500 || subtotal === 0 ? 0 : 9.99;
-  const tax = subtotal * 0.08;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : SHIPPING_FEE;
+  const tax = subtotal * GST_RATE;
   const total = subtotal + shipping + tax;
 
   return (
@@ -58,7 +59,7 @@ export default function CartPage() {
                       </button>
                     </div>
                   </div>
-                  <div className={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</div>
+                  <div className={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</div>
                 </div>
               ))}
             </div>
@@ -79,31 +80,35 @@ export default function CartPage() {
               <div className={styles.summaryLines}>
                 <div className={styles.summaryLine}>
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className={styles.summaryLine}>
                   <span>Shipping</span>
-                  <span>{shipping === 0 ? <span className={styles.freeShip}>Free</span> : `$${shipping.toFixed(2)}`}</span>
+                  <span>{shipping === 0 ? <span className={styles.freeShip}>Free</span> : formatCurrency(shipping)}</span>
                 </div>
                 <div className={styles.summaryLine}>
-                  <span>Tax (8%)</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>Tax (GST {GST_RATE * 100}%)</span>
+                  <span>{formatCurrency(tax)}</span>
                 </div>
-                {subtotal <= 500 && subtotal > 0 && (
-                  <div className={styles.shippingNote}>Add ${(500 - subtotal).toFixed(2)} more for free shipping!</div>
+                {subtotal < FREE_SHIPPING_THRESHOLD && subtotal > 0 && (
+                  <div className={styles.shippingNote}>
+                    Add {formatCurrency(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping!
+                  </div>
                 )}
               </div>
 
               <div className={styles.summaryTotal}>
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
 
               <Link href="/checkout" className={`btn btn-primary ${styles.checkoutBtn}`}>
                 <ShoppingBag size={18} /> Proceed to Checkout
               </Link>
 
-              <div className={styles.securityNote}>Secure checkout powered by SSL encryption</div>
+              <div className={styles.securityNote}>
+                Secure checkout powered by SSL encryption and INR-only pricing
+              </div>
             </aside>
           </div>
         )}

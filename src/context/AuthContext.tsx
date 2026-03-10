@@ -6,6 +6,7 @@ import React, {
     useState,
     useEffect,
     useCallback,
+    useMemo,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
@@ -33,13 +34,18 @@ interface AuthContextValue {
         password: string
     ) => Promise<{ success: boolean; error?: string }>;
     loginWithProvider: (
-        provider: OAuthProvider
+        provider: OAuthProvider,
+        role?: "customer" | "vendor"
     ) => Promise<{ success: boolean; error?: string }>;
     register: (
         name: string,
         email: string,
-        password: string
+        password: string,
+        role?: "customer" | "vendor"
     ) => Promise<{ success: boolean; sessionCreated?: boolean; error?: string }>;
+    resendConfirmation: (
+        email: string
+    ) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
 }
 
@@ -69,13 +75,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     // Fetch the user's role from the user_roles table
     const fetchRole = useCallback(
         async (userId: string): Promise<UserRole> => {
             const { data } = await supabase
-                .from("user_roles")
+                .from("profiles")
                 .select("role")
                 .eq("id", userId)
                 .single();
@@ -96,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Try to get role from cookie synchronously to prevent UI blocking
                 const cookies = document.cookie.split(";");
                 const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
-                let role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+                const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
 
                 // Set user immediately with cached/default role so UI renders instantly
                 setUser(buildAuthUser(initialSession.user, role));
@@ -124,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Read from cookie first
                 const cookies = document.cookie.split(";");
                 const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
-                let role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+                const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
 
                 setUser(buildAuthUser(newSession.user, role));
                 setSession(newSession);
@@ -164,12 +170,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // ── OAuth Social Login ───────────────────────────────────────────────────
     const loginWithProvider = useCallback(
         async (
-            provider: OAuthProvider
+            provider: OAuthProvider,
+            role?: "customer" | "vendor"
         ): Promise<{ success: boolean; error?: string }> => {
+            const redirectUrl = new URL(`${window.location.origin}/auth/callback`);
+            if (role) redirectUrl.searchParams.set("role", role);
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo: redirectUrl.toString(),
                     queryParams: {
                         // Google-specific: always show account picker
                         ...(provider === "google" && { prompt: "select_account" }),
@@ -188,7 +198,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         async (
             name: string,
             email: string,
-            password: string
+            password: string,
+            role: "customer" | "vendor" = "customer"
         ): Promise<{ success: boolean; sessionCreated?: boolean; error?: string }> => {
             const { data, error } = await supabase.auth.signUp({
                 email: email.trim().toLowerCase(),
@@ -199,8 +210,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 },
             });
             if (error) return { success: false, error: error.message };
+            if (data?.user?.id) {
+                const finalRole = role === "vendor" ? "vendor" : "customer";
+                await supabase.from("profiles").upsert({
+                    id: data.user.id,
+                    email: data.user.email ?? email.trim().toLowerCase(),
+                    role: finalRole,
+                });
+            }
             // sessionCreated = true means email confirmation is OFF → user is already logged in
             return { success: true, sessionCreated: !!data.session };
+        },
+        [supabase]
+    );
+
+    const resendConfirmation = useCallback(
+        async (email: string): Promise<{ success: boolean; error?: string }> => {
+            const normalizedEmail = email.trim().toLowerCase();
+            const { error } = await supabase.auth.resend({
+                type: "signup",
+                email: normalizedEmail,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                },
+            });
+
+            if (error) return { success: false, error: error.message };
+            return { success: true };
         },
         [supabase]
     );
@@ -223,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 login,
                 loginWithProvider,
                 register,
+                resendConfirmation,
                 logout,
             }}
         >

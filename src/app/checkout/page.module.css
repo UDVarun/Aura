@@ -169,10 +169,45 @@
     gap: 1rem;
 }
 
+.paymentModes {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.paymentModeBtn {
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 1rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.paymentModeBtn:hover {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+.paymentModeActive {
+    border-color: var(--primary);
+    background: var(--surface-2);
+    color: var(--foreground);
+}
+
 .btnRow {
     display: flex;
     gap: 1rem;
     margin-top: 0.5rem;
+}
+
+.helpText {
+    font-size: var(--text-xs);
+    color: var(--muted-light);
+    margin-top: 0.25rem;
 }
 
 .reviewSection {

@@ -1,11 +1,12 @@
+import { Buffer } from "buffer";
 import { NextRequest, NextResponse } from "next/server";
-import { uploadImage } from "@/lib/cloudflare/r2";
-import { createClient } from "@/lib/supabase/server";
+import { uploadProductImage } from "@/lib/supabase/storage";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
     try {
         // 1. Authenticate the user (ensure only admins/vendors can upload)
-        const supabase = await createClient();
+        const supabase = await createServerSupabase(request);
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
         // Check role
         const { data: roleData } = await supabase
-            .from("user_roles")
+            .from("profiles")
             .select("role")
             .eq("id", user.id)
             .single();
@@ -39,14 +40,16 @@ export async function POST(request: NextRequest) {
         // 4. Generate a unique filename
         const timestamp = Date.now();
         const fileExtension = file.name.split(".").pop();
-        const fileName = `${user.id}-${timestamp}.${fileExtension}`;
+        const safeExtension = fileExtension || "bin";
+        const fileName = `${user.id}-${timestamp}.${safeExtension}`;
 
-        // 5. Upload to Cloudflare R2
-        const imageUrl = await uploadImage(buffer, fileName, file.type);
+        // 5. Upload to Supabase storage
+        const imageUrl = await uploadProductImage(supabase, buffer, fileName, file.type);
 
         return NextResponse.json({ success: true, url: imageUrl });
     } catch (error) {
         console.error("Upload handler error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal Server Error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

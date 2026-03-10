@@ -1,98 +1,165 @@
-import { TrendingUp, ShoppingBag, Package, DollarSign, ArrowUpRight, Star } from "lucide-react";
-import styles from "./page.module.css";
 import Link from "next/link";
+import styles from "./page.module.css";
+import { formatCurrency } from "@/lib/currency";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-const STATS = [
-    { label: "My Revenue", value: "$12,480", change: "+18.3%", up: true, icon: DollarSign, color: "green" },
-    { label: "My Orders", value: "238", change: "+11.5%", up: true, icon: ShoppingBag, color: "blue" },
-    { label: "My Products", value: "14", change: "+2", up: true, icon: Package, color: "purple" },
-    { label: "Avg. Rating", value: "4.7 ★", change: "+0.3", up: true, icon: Star, color: "yellow" },
-];
+export default async function VendorDashboardPage() {
+    const supabase = await createServerSupabase();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
 
-const TOP_PRODUCTS = [
-    { id: "1", name: "Sony WH-1000XM5", sales: 84, revenue: "$33,432", rating: 4.8, stock: 24 },
-    { id: "2", name: "Smart Home Speaker", sales: 61, revenue: "$15,219", rating: 4.6, stock: 12 },
-    { id: "3", name: "Wireless Earbuds", sales: 45, revenue: "$8,955", rating: 4.5, stock: 3 },
-];
+    const { data: vendor } = user
+        ? await supabase.from("vendors").select("*").eq("user_id", user.id).single()
+        : { data: null };
 
-const RECENT_ORDERS = [
-    { id: "#ORD-1921", customer: "Alex Johnson", product: "Sony WH-1000XM5", amount: "$398.00", status: "delivered" },
-    { id: "#ORD-1920", customer: "Maria Garcia", product: "Smart Home Speaker", amount: "$249.50", status: "processing" },
-    { id: "#ORD-1917", customer: "Mike Torres", product: "Wireless Earbuds", amount: "$199.00", status: "shipped" },
-];
+    const { count: productCount = 0 } = await supabase
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("vendor_id", user?.id ?? "");
 
-const STATUS_COLORS: Record<string, string> = {
-    delivered: "badge-green",
-    processing: "badge-blue",
-    shipped: "badge-yellow",
-};
+    const { count: orderCount = 0 } = await supabase
+        .from("order_items")
+        .select("*", { count: "exact", head: true })
+        .eq("vendor_id", user?.id ?? "");
 
-export default function VendorDashboard() {
+    const topProducts = await supabase
+        .from("products")
+        .select("id, title, price, stock_quantity")
+        .eq("vendor_id", user?.id ?? "")
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+    const ordersResponse = await supabase
+        .from("order_items")
+        .select("quantity, price_at_time")
+        .eq("vendor_id", user?.id ?? "")
+        .limit(100);
+
+    const topProductsList = topProducts.data ?? [];
+    const totalRevenue = (ordersResponse.data ?? []).reduce((sum, item) => {
+        return sum + Number(item.price_at_time ?? 0) * Number(item.quantity ?? 0);
+    }, 0);
+
+    const lowStockProducts = topProductsList.filter((product) => Number(product.stock_quantity ?? 0) < 5).length;
+    const quickActions = [
+        {
+            title: "Add product",
+            description: "Create a new listing with images, INR pricing, and inventory.",
+            href: "/vendor/products/new",
+            label: "New listing",
+        },
+        {
+            title: "Edit catalog",
+            description: "Update titles, descriptions, and prices for your own products.",
+            href: "/vendor/products",
+            label: "Manage products",
+        },
+        {
+            title: "Manage stock",
+            description: `${lowStockProducts} low-stock items need attention right now.`,
+            href: "/vendor/products",
+            label: "Update stock",
+        },
+        {
+            title: "View orders",
+            description: "Track orders and revenue only for products sold by your store.",
+            href: "/vendor/orders",
+            label: "Open orders",
+        },
+    ];
+
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
                 <div>
                     <h1 className={styles.pageTitle}>Vendor Dashboard</h1>
-                    <p className={styles.pageSubtitle}>Your store performance overview</p>
+                    <p className={styles.pageSubtitle}>
+                        {vendor
+                            ? "Manage your catalog and view a quick overview of your performance."
+                            : "You need to apply and be approved before accessing the vendor dashboard."}
+                    </p>
                 </div>
-                <Link href="/vendor/products" className="btn btn-primary"><Package size={16} /> Manage Products</Link>
+                <Link href="/vendor/products" className="btn btn-primary">
+                    Manage Products
+                </Link>
             </div>
 
-            {/* Stats */}
             <div className={styles.statsGrid}>
-                {STATS.map(({ label, value, change, up, icon: Icon, color }) => (
-                    <div key={label} className={`${styles.statCard} ${styles[`stat_${color}`]}`}>
-                        <div className={styles.statHeader}>
-                            <div className={`${styles.statIconWrap} ${styles[`icon_${color}`]}`}><Icon size={20} /></div>
-                            <span className={`${styles.statChange} ${up ? styles.statUp : styles.statDown}`}>
-                                <ArrowUpRight size={14} /> {change}
-                            </span>
-                        </div>
-                        <div className={styles.statValue}>{value}</div>
-                        <div className={styles.statLabel}>{label}</div>
+                <div className={`${styles.statCard} ${styles.stat_blue}`}>
+                    <div className={styles.statHeader}>
+                        <span className={styles.statLabel}>Products</span>
                     </div>
+                    <div className={styles.statValue}>{productCount ?? 0}</div>
+                </div>
+                <div className={`${styles.statCard} ${styles.stat_green}`}>
+                    <div className={styles.statHeader}>
+                        <span className={styles.statLabel}>Orders</span>
+                    </div>
+                    <div className={styles.statValue}>{orderCount ?? 0}</div>
+                </div>
+                <div className={`${styles.statCard} ${styles.stat_purple}`}>
+                    <div className={styles.statHeader}>
+                        <span className={styles.statLabel}>Status</span>
+                    </div>
+                    <div className={styles.statValue}>{vendor?.status ?? "pending"}</div>
+                </div>
+                <div className={`${styles.statCard} ${styles.stat_gold}`}>
+                    <div className={styles.statHeader}>
+                        <span className={styles.statLabel}>Revenue</span>
+                    </div>
+                    <div className={styles.statValue}>{formatCurrency(totalRevenue)}</div>
+                </div>
+            </div>
+
+            <div className={styles.quickActionGrid}>
+                {quickActions.map((action) => (
+                    <section key={action.title} className={styles.actionCard}>
+                        <div className={styles.actionBody}>
+                            <p className={styles.actionEyebrow}>Vendor feature</p>
+                            <h3 className={styles.actionTitle}>{action.title}</h3>
+                            <p className={styles.actionDescription}>{action.description}</p>
+                        </div>
+                        <Link href={action.href} className={styles.actionLink}>
+                            {action.label}
+                        </Link>
+                    </section>
                 ))}
             </div>
 
-            <div className={styles.twoCol}>
-                {/* Top Products */}
-                <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Top Products</h2>
-                        <Link href="/vendor/products" className={styles.viewAll}>Manage →</Link>
-                    </div>
-                    {TOP_PRODUCTS.map((p) => (
-                        <div key={p.id} className={styles.productRow}>
-                            <div className={styles.productInfo}>
-                                <span className={styles.productName}>{p.name}</span>
-                                <span className={styles.productMeta}>{p.sales} sold · Stock: {p.stock}</span>
-                            </div>
-                            <div className={styles.productRight}>
-                                <span className={styles.productRevenue}>{p.revenue}</span>
-                                <span className={styles.productRating}>★ {p.rating}</span>
-                            </div>
-                        </div>
-                    ))}
+            <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                    <h2 className={styles.sectionTitle}>Top products</h2>
+                    <Link href="/vendor/products" className={styles.viewAll}>
+                        View all
+                    </Link>
                 </div>
-
-                {/* Recent Orders */}
-                <div className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Recent Orders</h2>
-                        <Link href="/vendor/orders" className={styles.viewAll}>View all →</Link>
-                    </div>
-                    {RECENT_ORDERS.map((o) => (
-                        <div key={o.id} className={styles.orderRow}>
-                            <div>
-                                <span className={styles.orderId}>{o.id}</span>
-                                <span className={styles.orderCustomer}>{o.customer}</span>
-                            </div>
-                            <div className={styles.orderRight}>
-                                <span className={styles.orderAmount}>{o.amount}</span>
-                                <span className={`badge ${STATUS_COLORS[o.status]}`}>{o.status}</span>
-                            </div>
-                        </div>
-                    ))}
+                <div className={styles.tableWrapper}>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {topProductsList.map((product) => (
+                                <tr key={product.id} className={styles.tableRow}>
+                                    <td>{product.title}</td>
+                                    <td>{formatCurrency(Number(product.price || 0))}</td>
+                                    <td>{product.stock_quantity}</td>
+                                </tr>
+                            ))}
+                            {topProductsList.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className={styles.emptyCell}>
+                                        No products yet.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

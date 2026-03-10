@@ -1,123 +1,116 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Mail, PhoneCall, MessageCircle, MapPin, Clock3 } from "lucide-react";
+import { AlertTriangle, MessageSquare, ShieldCheck, Truck } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { SupportInbox } from "@/components/marketplace/SupportInbox";
 import styles from "./page.module.css";
+
+type OrderSummary = {
+  id: string;
+  order_number: string;
+  status: string;
+  placed_at: string;
+};
 
 const PILLARS = [
   {
-    title: "Order Confidence",
-    desc: "Track updates, delivery milestones, and fulfillment status with complete visibility.",
+    title: "Protected escalations",
+    desc: "Every seller conversation, refund request, and dispute stays inside Aura for evidence-backed resolution.",
+    Icon: ShieldCheck,
   },
   {
-    title: "Transparent Policies",
-    desc: "Clear shipping, returns, and refund standards designed to reduce uncertainty.",
+    title: "Vendor accountability",
+    desc: "Support cases route directly to the responsible seller first, then escalate to admin when SLA or trust issues appear.",
+    Icon: MessageSquare,
   },
   {
-    title: "Priority Assistance",
-    desc: "Specialist support for product guidance, exchanges, and post-purchase issues.",
-  },
-];
-
-const CONTACT_CHANNELS = [
-  {
-    title: "Customer Support",
-    detail: "help@aura.com",
-    hint: "Response time: under 6 hours",
-    Icon: Mail,
+    title: "Order issue recovery",
+    desc: "Wrong item, damage, delivery failure, or suspicious seller activity can be reported from one workflow.",
+    Icon: AlertTriangle,
   },
   {
-    title: "Phone Support",
-    detail: "+1 (800) 555-0199",
-    hint: "Mon-Fri, 9:00 AM-7:00 PM",
-    Icon: PhoneCall,
-  },
-  {
-    title: "Live Chat",
-    detail: "Start instant chat",
-    hint: "Available for all account holders",
-    Icon: MessageCircle,
+    title: "Fulfillment visibility",
+    desc: "Support is tied to live order states, shipment updates, and post-delivery review history.",
+    Icon: Truck,
   },
 ];
 
 export default function CustomerCarePage() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    fetch("/api/orders/me")
+      .then((res) => res.json())
+      .then((payload) => {
+        setOrders(payload.orders ?? []);
+      });
+  }, [isAuthenticated]);
+
+  const orderOptions = useMemo(
+    () =>
+      orders.map((order) => ({
+        id: order.id,
+        label: `${order.order_number} • ${order.status} • ${new Date(order.placed_at).toLocaleDateString("en-IN")}`,
+      })),
+    [orders]
+  );
+
   return (
     <main className={styles.page}>
       <section className={`container ${styles.hero}`}>
         <p className={styles.eyebrow}>Customer Care</p>
-        <h1 className={styles.title}>Professional support, designed around customer trust.</h1>
+        <h1 className={styles.title}>A marketplace support workflow built for trust, evidence, and clear ownership.</h1>
         <p className={styles.subtitle}>
-          Aura Customer Care unifies order help, policy guidance, and direct support channels in one place for a seamless post-purchase experience.
+          Aura Customer Care connects your orders, seller communication, refund requests, and admin escalations in one protected workspace.
         </p>
         <div className={styles.actions}>
-          <Link href="/products" className={styles.primaryAction}>Start Shopping</Link>
+          <Link href="/products" className={styles.primaryAction}>Continue Shopping</Link>
+          {!isAuthenticated && <Link href="/login?redirect=/customer-care" className={styles.secondaryAction}>Sign In to Open a Case</Link>}
         </div>
       </section>
 
       <section className={`container ${styles.pillars}`}>
-        <h2 className={styles.sectionTitle}>What You Can Expect</h2>
+        <h2 className={styles.sectionTitle}>Support principles</h2>
         <div className={styles.grid}>
-          {PILLARS.map((item) => (
-            <article key={item.title} className={styles.card}>
-              <h3>{item.title}</h3>
-              <p>{item.desc}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={`container ${styles.channels}`}>
-        <h2 className={styles.sectionTitle}>Support Channels</h2>
-        <div className={styles.channelsGrid}>
-          {CONTACT_CHANNELS.map(({ title, detail, hint, Icon }) => (
-            <article key={title} className={styles.channelCard}>
+          {PILLARS.map(({ title, desc, Icon }) => (
+            <article key={title} className={styles.card}>
               <div className={styles.channelIcon}>
                 <Icon size={18} />
               </div>
-              <h3 className={styles.channelTitle}>{title}</h3>
-              <p className={styles.channelDetail}>{detail}</p>
-              <p className={styles.channelHint}>{hint}</p>
+              <h3>{title}</h3>
+              <p>{desc}</p>
             </article>
           ))}
         </div>
       </section>
 
       <section className={`container ${styles.mainSection}`}>
-        <div className={styles.mainGrid}>
+        {isLoading ? (
+          <div className={styles.formCard}>Loading your support workspace...</div>
+        ) : !isAuthenticated ? (
           <div className={styles.formCard}>
-            <h2>Send a Request</h2>
-            <p className={styles.formHint}>Share your issue and our team will follow up with a clear next step.</p>
-            <form className={styles.form}>
-              <div className={styles.formRow}>
-                <input className="input" type="text" placeholder="Full name" required />
-                <input className="input" type="email" placeholder="Email address" required />
-              </div>
-              <div className={styles.formRow}>
-                <input className="input" type="text" placeholder="Order ID (optional)" />
-                <select className="input" defaultValue="support">
-                  <option value="support">Support</option>
-                  <option value="returns">Returns</option>
-                  <option value="shipping">Shipping</option>
-                  <option value="account">Account</option>
-                </select>
-              </div>
-              <textarea className={`input ${styles.textarea}`} placeholder="How can we help?" required />
-              <button type="submit" className="btn btn-primary">Submit Request</button>
-            </form>
+            <h2>Sign in to manage cases</h2>
+            <p className={styles.formHint}>
+              Once signed in, you can report product issues, request refunds, escalate fraudulent sellers, and continue case conversations with vendors or admin.
+            </p>
+            <Link href="/login?redirect=/customer-care" className="btn btn-primary">
+              Go to Sign In
+            </Link>
           </div>
-
-          <aside className={styles.infoCard}>
-            <h3>Customer Care Desk</h3>
-            <ul className={styles.infoList}>
-              <li><MapPin size={16} />220 Mission Street, San Francisco, CA</li>
-              <li><Clock3 size={16} />Mon-Fri, 9:00 AM-7:00 PM (PST)</li>
-              <li><Mail size={16} />help@aura.com</li>
-            </ul>
-            <div className={styles.quickLinks}>
-              <Link href="/faq">FAQ</Link>
-              <Link href="/shipping">Shipping and Returns</Link>
-              <Link href="/account">Manage Account</Link>
-            </div>
-          </aside>
-        </div>
+        ) : (
+          <SupportInbox
+            role="customer"
+            title="Your support cases"
+            subtitle="Open a new dispute or continue an existing case with the seller and Aura admin."
+            allowCreate
+            orderOptions={orderOptions}
+          />
+        )}
       </section>
     </main>
   );

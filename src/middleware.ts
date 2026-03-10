@@ -8,6 +8,8 @@ const AUTH_ROUTES = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const isVendorRoute = pathname.startsWith(VENDOR_PREFIX);
+    const isVendorRoot = pathname === VENDOR_PREFIX || pathname === `${VENDOR_PREFIX}/`;
 
     // Refresh the Supabase session on every request (required by @supabase/ssr)
     const { supabaseResponse, user, supabase } = await updateSession(request);
@@ -16,10 +18,10 @@ export async function middleware(request: NextRequest) {
     let role = request.cookies.get("role")?.value ?? null;
 
     // Strict check for protected routes or if cookie is missing but user is logged in
-    const isProtectedRoute = pathname.startsWith(ADMIN_PREFIX) || pathname.startsWith(VENDOR_PREFIX);
+    const isProtectedRoute = pathname.startsWith(ADMIN_PREFIX) || isVendorRoute;
     if (user && (!role || isProtectedRoute)) {
         const { data } = await supabase
-            .from("user_roles")
+            .from("profiles")
             .select("role")
             .eq("id", user.id)
             .single();
@@ -51,12 +53,28 @@ export async function middleware(request: NextRequest) {
     }
 
     // 2. Protect Vendor routes
-    if (pathname.startsWith(VENDOR_PREFIX)) {
-        if (!user || role !== "vendor") {
+    if (isVendorRoute) {
+        const { data: vendor } = user
+            ? await supabase.from("vendors").select("status").eq("user_id", user.id).single()
+            : { data: null };
+
+        if (!user) {
             const loginUrl = new URL("/login", request.url);
             loginUrl.searchParams.set("redirect", pathname);
             loginUrl.searchParams.set("required", "vendor");
             return NextResponse.redirect(loginUrl);
+        }
+
+        if (role !== "vendor") {
+            return NextResponse.redirect(new URL("/become-vendor", request.url));
+        }
+
+        const isApprovedVendor = vendor?.status === "approved";
+
+        // Allow vendor accounts to open the dashboard root even while pending/rejected.
+        // Management sub-routes remain restricted to approved vendors only.
+        if (!isVendorRoot && !isApprovedVendor) {
+            return NextResponse.redirect(new URL("/become-vendor", request.url));
         }
     }
 

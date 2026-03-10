@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingBag, Users, Settings, LogOut, ChevronRight, TrendingUp } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, LogOut, ChevronRight, Shapes, ShieldAlert } from "lucide-react";
 import styles from "./layout.module.css";
 import { useAuth } from "@/context/AuthContext";
 import clsx from "clsx";
 
 const NAV_ITEMS = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: "/admin/products", label: "Products", icon: Package },
+    { href: "/admin/categories", label: "Categories", icon: Shapes },
+    { href: "/admin/vendors", label: "Vendors", icon: ShoppingBag },
     { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
+    { href: "/admin/cases", label: "Cases", icon: ShieldAlert },
     { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

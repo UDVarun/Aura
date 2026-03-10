@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Moon, Palette, Sun, User2 } from "lucide-react";
+import { LifeBuoy, MapPinHouse, Moon, Palette, ShoppingBag, Sun, User2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useAccountData } from "@/context/AccountDataContext";
 import { useTheme } from "@/context/ThemeContext";
 import styles from "./page.module.css";
 
 export default function AccountPage() {
     const { user, isAuthenticated, isLoading } = useAuth();
+    const { profile, addresses, orders, isLoading: accountLoading } = useAccountData();
     const { theme, setTheme } = useTheme();
 
-    if (isLoading) {
+    if (isLoading || accountLoading) {
         return (
             <section className={styles.page}>
                 <div className={`container ${styles.container}`}>
@@ -63,6 +65,10 @@ export default function AccountPage() {
                             <span className={styles.label}>Role</span>
                             <span className={styles.badge}>{user.role}</span>
                         </div>
+                        <div className={styles.profileRow}>
+                            <span className={styles.label}>Phone</span>
+                            <span className={styles.value}>{profile?.phone ?? "Not added yet"}</span>
+                        </div>
                     </article>
 
                     <article className={styles.card}>
@@ -93,6 +99,65 @@ export default function AccountPage() {
                             </button>
                         </div>
                     </article>
+
+                    <article className={styles.card}>
+                        <h2 className={styles.cardTitle}>
+                            <MapPinHouse size={18} />
+                            Saved Addresses
+                        </h2>
+                        <p className={styles.helpText}>
+                            Addresses are loaded from your account, so they follow you across devices after sign-in.
+                        </p>
+                        <div className={styles.profileRow}>
+                            <span className={styles.label}>Saved addresses</span>
+                            <span className={styles.value}>{addresses.length}</span>
+                        </div>
+                        {addresses.slice(0, 3).map((address) => (
+                            <div key={address.id} className={styles.profileRow}>
+                                <span className={styles.label}>{address.label}</span>
+                                <span className={styles.value}>
+                                    {address.city}, {address.state}
+                                </span>
+                            </div>
+                        ))}
+                    </article>
+
+                    {user.role === "customer" && (
+                        <article className={styles.card}>
+                            <h2 className={styles.cardTitle}>
+                                <ShoppingBag size={18} />
+                                Orders
+                            </h2>
+                            <p className={styles.helpText}>
+                                Recent purchases are restored from Supabase every time you sign in on a new device.
+                            </p>
+                            <div className={styles.profileRow}>
+                                <span className={styles.label}>Recent orders</span>
+                                <span className={styles.value}>{orders.length}</span>
+                            </div>
+                            {orders.slice(0, 3).map((order) => (
+                                <div key={order.id} className={styles.profileRow}>
+                                    <span className={styles.label}>{order.order_number}</span>
+                                    <span className={styles.value}>{order.status}</span>
+                                </div>
+                            ))}
+                        </article>
+                    )}
+
+                    {user.role === "customer" && (
+                        <article className={styles.card}>
+                            <h2 className={styles.cardTitle}>
+                                <LifeBuoy size={18} />
+                                Customer Care
+                            </h2>
+                            <p className={styles.helpText}>
+                                Disputes, refunds, and seller issues stay linked to your account and order history.
+                            </p>
+                            <Link href="/customer-care" className={styles.modeBtn} style={{ marginTop: "1rem", textDecoration: "none" }}>
+                                Open Customer Care
+                            </Link>
+                        </article>
+                    )}
                 </div>
             </div>
         </section>

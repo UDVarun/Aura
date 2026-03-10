@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Edit, Trash2, Package, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { formatCurrency } from "@/lib/currency";
+import { deleteProductImage } from "@/lib/supabase/storage";
 import styles from "./page.module.css";
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -12,9 +15,26 @@ const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     inactive: { label: "Inactive", cls: "badge-red" },
 };
 
+interface VendorProductRow {
+    id: string;
+    title: string;
+    price: number | string;
+    stock_quantity: number;
+    image_url?: string | null;
+    categories?: { name?: string | null } | null;
+}
+
+function toNumber(value: string | number | null | undefined) {
+    return typeof value === "number" ? value : parseFloat(value?.toString() ?? "0");
+}
+
+function getErrorMessage(err: unknown) {
+    return err instanceof Error ? err.message : String(err);
+}
+
 export default function VendorProductsPage() {
     const supabase = createClient();
-    const [products, setProducts] = useState<any[]>([]);
+    const [products, setProducts] = useState<VendorProductRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,9 +56,9 @@ export default function VendorProductsPage() {
 
                 if (error) throw error;
                 setProducts(data || []);
-            } catch (err: any) {
+            } catch (err) {
                 console.error("Error fetching vendor products:", err);
-                setError(err.message);
+                setError(getErrorMessage(err));
             } finally {
                 setLoading(false);
             }
@@ -51,11 +71,19 @@ export default function VendorProductsPage() {
         if (!confirm("Delete this product?")) return;
 
         try {
+            const productToDelete = products.find(p => p.id === id);
+
             const { error } = await supabase.from("products").delete().eq("id", id);
             if (error) throw error;
+
+            // Delete associated image from Supabase Storage
+            if (productToDelete?.image_url) {
+                await deleteProductImage(supabase, productToDelete.image_url);
+            }
+
             setProducts(products.filter(p => p.id !== id));
-        } catch (err: any) {
-            alert("Delete failed: " + err.message);
+        } catch (err) {
+            alert("Delete failed: " + getErrorMessage(err));
         }
     };
 
@@ -108,7 +136,13 @@ export default function VendorProductsPage() {
                                             <td>
                                                 <div className={styles.productCell}>
                                                     {p.image_url ? (
-                                                        <img src={p.image_url} alt="" className={styles.productThumb} />
+                                                        <Image
+                                                            src={p.image_url}
+                                                            alt={p.title}
+                                                            width={56}
+                                                            height={56}
+                                                            className={styles.productThumb}
+                                                        />
                                                     ) : (
                                                         <div className={styles.productThumbPlaceholder}><Package size={14} /></div>
                                                     )}
@@ -116,7 +150,7 @@ export default function VendorProductsPage() {
                                                 </div>
                                             </td>
                                             <td>{p.categories?.name || "Uncategorized"}</td>
-                                            <td className={styles.price}>${parseFloat(p.price).toFixed(2)}</td>
+                                            <td className={styles.price}>{formatCurrency(toNumber(p.price))}</td>
                                             <td className={p.stock_quantity === 0 ? styles.stockZero : p.stock_quantity < 5 ? styles.stockLow : styles.stockOk}>{p.stock_quantity}</td>
                                             <td><span className={`badge ${STATUS_MAP[stockStatus].cls}`}>{STATUS_MAP[stockStatus].label}</span></td>
                                             <td>
@@ -136,7 +170,7 @@ export default function VendorProductsPage() {
                                 })}
                                 {products.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className={styles.emptyCell}>You haven't added any products yet.</td>
+                                        <td colSpan={6} className={styles.emptyCell}>You haven&apos;t added any products yet.</td>
                                     </tr>
                                 )}
                             </tbody>

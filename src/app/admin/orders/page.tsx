@@ -1,38 +1,58 @@
-import { Search, Filter, Eye } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import styles from "../products/page.module.css";
+import { createServerSupabase } from "@/lib/supabase/server";
 
-const ORDERS = [
-    { id: "#ORD-1921", customer: "Alex Johnson", email: "alex@example.com", product: "Sony WH-1000XM5", amount: "$398.00", date: "Mar 8, 2026", status: "delivered" },
-    { id: "#ORD-1920", customer: "Maria Garcia", email: "maria@example.com", product: "Mechanical Keyboard", amount: "$159.99", date: "Mar 8, 2026", status: "processing" },
-    { id: "#ORD-1919", customer: "James Lee", email: "james@example.com", product: "Smart Home Speaker", amount: "$249.50", date: "Mar 7, 2026", status: "shipped" },
-    { id: "#ORD-1918", customer: "Sarah Kim", email: "sarah@example.com", product: "Ceramic Table Lamp", amount: "$89.00", date: "Mar 7, 2026", status: "pending" },
-    { id: "#ORD-1917", customer: "Mike Torres", email: "mike@example.com", product: "Laptop Stand Pro", amount: "$79.99", date: "Mar 6, 2026", status: "delivered" },
-    { id: "#ORD-1916", customer: "Lisa Wang", email: "lisa@example.com", product: "Wireless Earbuds", amount: "$199.00", date: "Mar 6, 2026", status: "cancelled" },
-];
+interface AdminOrderRow {
+    id: string;
+    product_title: string;
+    line_total: number;
+    status: string;
+    shipment_status: string;
+    created_at: string;
+    orders?: {
+        order_number?: string | null;
+        shipping_address?: {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+        } | null;
+    } | null;
+}
 
 const STATUS_MAP: Record<string, string> = {
     delivered: "badge-green",
     processing: "badge-blue",
     shipped: "badge-yellow",
-    pending: "badge-red",
+    placed: "badge-yellow",
     cancelled: "badge-red",
+    disputed: "badge-red",
+    refund_requested: "badge-red",
 };
 
-export default function AdminOrdersPage() {
+export default async function AdminOrdersPage() {
+    const supabase = await createServerSupabase();
+    const { data } = await supabase
+        .from("order_items")
+        .select("id, product_title, line_total, status, shipment_status, created_at, orders(order_number, shipping_address)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+    const orders = (data as AdminOrderRow[] | null) ?? [];
+
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
                 <div>
                     <h1 className={styles.pageTitle}>Orders</h1>
-                    <p className={styles.pageSubtitle}>{ORDERS.length} orders this week</p>
+                    <p className={styles.pageSubtitle}>{orders.length} tracked order lines across the marketplace</p>
                 </div>
             </div>
             <div className={styles.toolbar}>
                 <div className={styles.searchWrap}>
                     <Search size={15} className={styles.searchIcon} />
-                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} />
+                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} readOnly />
                 </div>
-                <button className="btn btn-secondary"><Filter size={15} /> Filter</button>
+                <button className="btn btn-secondary"><Filter size={15} /> Live queue</button>
             </div>
             <div className={styles.tableCard}>
                 <div className={styles.tableWrapper}>
@@ -45,28 +65,33 @@ export default function AdminOrdersPage() {
                                 <th>Date</th>
                                 <th>Amount</th>
                                 <th>Status</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {ORDERS.map((o) => (
-                                <tr key={o.id} className={styles.tableRow}>
-                                    <td><span className={styles.orderId}>{o.id}</span></td>
-                                    <td>
-                                        <div>
-                                            <div className={styles.customer}>{o.customer}</div>
-                                            <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{o.email}</div>
-                                        </div>
-                                    </td>
-                                    <td className={styles.productName}>{o.product}</td>
-                                    <td>{o.date}</td>
-                                    <td><span className={styles.amount}>{o.amount}</span></td>
-                                    <td><span className={`badge ${STATUS_MAP[o.status]}`}>{o.status}</span></td>
-                                    <td>
-                                        <button className={styles.actionBtn} aria-label="View order"><Eye size={14} /></button>
-                                    </td>
+                            {orders.map((order) => {
+                                const shipping = order.orders?.shipping_address;
+                                const customerName = [shipping?.firstName, shipping?.lastName].filter(Boolean).join(" ") || "Aura customer";
+                                return (
+                                    <tr key={order.id} className={styles.tableRow}>
+                                        <td><span className={styles.orderId}>{order.orders?.order_number ?? order.id}</span></td>
+                                        <td>
+                                            <div>
+                                                <div className={styles.customer}>{customerName}</div>
+                                                <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{shipping?.email ?? ""}</div>
+                                            </div>
+                                        </td>
+                                        <td className={styles.productName}>{order.product_title}</td>
+                                        <td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td>
+                                        <td><span className={styles.amount}>₹{Number(order.line_total).toLocaleString("en-IN")}</span></td>
+                                        <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.status}</span></td>
+                                    </tr>
+                                );
+                            })}
+                            {orders.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className={styles.emptyCell}>No orders have been placed yet.</td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>

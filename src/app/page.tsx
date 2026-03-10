@@ -35,7 +35,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "1",
     name: "Sony WH-1000XM5 Wireless Noise Canceling",
-    price: 398.0,
+    price: 29999.0,
     category: "Electronics",
     image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=800&auto=format&fit=crop",
     rating: 4.8,
@@ -44,7 +44,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "2",
     name: "Minimalist Mechanical Keyboard",
-    price: 159.99,
+    price: 12999.99,
     category: "Accessories",
     image: "https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=800&auto=format&fit=crop",
     rating: 4.9,
@@ -52,7 +52,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "3",
     name: "Aura Premium Smart Speaker",
-    price: 249.5,
+    price: 18500.5,
     category: "Audio",
     image: "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop",
     rating: 4.6,
@@ -61,7 +61,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "4",
     name: "Geometric Ceramic Table Lamp",
-    price: 89.0,
+    price: 3450.0,
     category: "Home Decor",
     image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=800&auto=format&fit=crop",
     rating: 4.5,
@@ -69,7 +69,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "5",
     name: "Matte Black Espresso Machine",
-    price: 499.0,
+    price: 45999.0,
     category: "Kitchen",
     image: "https://images.unsplash.com/photo-1517246281007-cc1a9388c422?q=80&w=800&auto=format&fit=crop",
     rating: 4.9,
@@ -77,7 +77,7 @@ const MOCK_PRODUCTS: Product[] = [
   {
     id: "6",
     name: "Ergonomic Office Chair 2.0",
-    price: 345.0,
+    price: 24999.0,
     category: "Furniture",
     image: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?q=80&w=800&auto=format&fit=crop",
     rating: 4.7,
