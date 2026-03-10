@@ -104,12 +104,6 @@ export default function Navbar() {
                                 {label}
                             </Link>
                         ))}
-                        {dashboardLink && (
-                            <Link href={dashboardLink.href} className={clsx(styles.navLink, styles.dashboardLink)}>
-                                <dashboardLink.Icon size={15} />
-                                {dashboardLink.label}
-                            </Link>
-                        )}
                     </nav>
 
                     {/* Center: Global Search Bar */}
@@ -242,12 +236,6 @@ export default function Navbar() {
                             {label}
                         </Link>
                     ))}
-                    {dashboardLink && (
-                        <Link href={dashboardLink.href} className={clsx(styles.mobileNavLink, styles.mobileNavHighlight)} onClick={() => setMobileOpen(false)}>
-                            <dashboardLink.Icon size={16} />
-                            {dashboardLink.label}
-                        </Link>
-                    )}
                     <div className={styles.mobileNavDivider} />
                     {isAuthenticated && user ? (
                         <>

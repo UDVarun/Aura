@@ -16,9 +16,20 @@
   --warning: #f59e0b;
   --muted: #8993a2;
   --muted-light: #c1c8d4;
+  --text: #f5f7fa;
+  --text-muted: #8993a2;
   --border: #252a33;
   --card-bg: #111419;
   --card-hover: #171b22;
+  --panel-bg: linear-gradient(180deg, rgba(18, 22, 28, 0.94), rgba(11, 14, 19, 0.96));
+  --panel-elevated: linear-gradient(180deg, rgba(22, 27, 34, 0.94), rgba(14, 18, 24, 0.98));
+  --panel-border-strong: color-mix(in srgb, var(--primary) 18%, var(--border));
+  --table-header: rgba(255, 255, 255, 0.04);
+  --table-row-hover: rgba(255, 255, 255, 0.03);
+  --sidebar-stroke: rgba(255, 255, 255, 0.07);
+  --sidebar-accent: rgba(90, 140, 255, 0.14);
+  --vendor-accent: rgba(59, 130, 246, 0.12);
+  --admin-accent: rgba(245, 158, 11, 0.12);
 
   /* Surface system (Glassmorphism) */
   --surface-1: rgba(17, 20, 25, 0.9);
@@ -99,9 +110,20 @@
   --accent-hover: #4f739f;
   --muted: #677282;
   --muted-light: #4c5563;
+  --text: #101317;
+  --text-muted: #677282;
   --border: #d7dee8;
   --card-bg: #ffffff;
   --card-hover: #f7f9fc;
+  --panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 253, 0.98));
+  --panel-elevated: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(239, 244, 251, 0.98));
+  --panel-border-strong: color-mix(in srgb, var(--primary) 24%, var(--border));
+  --table-header: rgba(15, 23, 42, 0.04);
+  --table-row-hover: rgba(47, 111, 228, 0.04);
+  --sidebar-stroke: rgba(15, 23, 42, 0.08);
+  --sidebar-accent: rgba(47, 111, 228, 0.08);
+  --vendor-accent: rgba(5, 150, 105, 0.08);
+  --admin-accent: rgba(217, 119, 6, 0.08);
 
   --surface-1: rgba(255, 255, 255, 0.94);
   --surface-2: rgba(246, 249, 253, 0.88);

@@ -2,6 +2,7 @@ import Link from "next/link";
 import styles from "./page.module.css";
 import { formatCurrency } from "@/lib/currency";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { ArrowRight } from "lucide-react";
 
 export default async function VendorDashboardPage() {
     const supabase = await createServerSupabase();
@@ -80,8 +81,9 @@ export default async function VendorDashboardPage() {
                             : "You need to apply and be approved before accessing the vendor dashboard."}
                     </p>
                 </div>
-                <Link href="/vendor/products" className="btn btn-primary">
+                <Link href="/vendor/products" className={styles.heroButton}>
                     Manage Products
+                    <ArrowRight size={16} />
                 </Link>
             </div>
 
@@ -122,6 +124,7 @@ export default async function VendorDashboardPage() {
                         </div>
                         <Link href={action.href} className={styles.actionLink}>
                             {action.label}
+                            <ArrowRight size={15} />
                         </Link>
                     </section>
                 ))}
