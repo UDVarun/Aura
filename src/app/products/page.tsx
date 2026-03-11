@@ -74,32 +74,63 @@ function ProductsContent() {
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
   const selectedCategory = searchParams.get("category")?.toLowerCase() ?? "all";
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [{ data: productData, error: productError }, { data: categoryData, error: categoryError }] = await Promise.all([
-          supabase
-            .from("products")
-            .select("*, categories(name, slug)"),
-          supabase
-            .from("categories")
-            .select("id, name, slug")
-            .order("name"),
-        ]);
+    useEffect(() => {
+      async function fetchData() {
+        try {
+          const [{ data: productData, error: productError }, { data: categoryData, error: categoryError }] = await Promise.all([
+            supabase
+              .from("products")
+              .select("*, categories(name, slug)"),
+            supabase
+              .from("categories")
+              .select("id, name, slug")
+              .order("name"),
+          ]);
 
-        if (productError) throw productError;
-        if (categoryError) throw categoryError;
-        setProducts(productData || []);
-        setCategories(categoryData || []);
-      } catch (err) {
-        console.error("Error fetching products:", err);
-        setError(getErrorMessage(err));
-      } finally {
-        setLoading(false);
+          if (productError) throw productError;
+          if (categoryError) throw categoryError;
+          setProducts(productData || []);
+          setCategories(categoryData || []);
+        } catch (err) {
+          console.error("Error fetching products:", err);
+          setError(getErrorMessage(err));
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-    fetchData();
-  }, [supabase]);
+      fetchData();
+
+      const subscription = supabase
+        .channel("products-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "products" },
+          (payload) => {
+            if (payload.eventType === "INSERT") {
+              // Fetch the new product with joined category data
+              supabase
+                .from("products")
+                .select("*, categories(name, slug)")
+                .eq("id", payload.new.id)
+                .single()
+                .then(({ data }) => {
+                  if (data) setProducts((prev) => [data, ...prev]);
+                });
+            } else if (payload.eventType === "UPDATE") {
+              setProducts((prev) =>
+                prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+              );
+            } else if (payload.eventType === "DELETE") {
+              setProducts((prev) => prev.filter((p) => p.id === payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(subscription);
+      };
+    }, [supabase]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]));
@@ -274,6 +305,10 @@ function ProductsContent() {
                           className={styles.addBtn}
                           onClick={(e) => {
                             e.preventDefault();
+                            if (useCart().isInCart(product.id)) {
+                              openCart();
+                              return;
+                            }
                             const imageUrl = product.image_url ?? "";
                             addItem({
                               id: product.id,
@@ -285,7 +320,7 @@ function ProductsContent() {
                             openCart();
                           }}
                         >
-                          Add to Cart
+                          {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
                         </button>
                       </div>
                     </Link>

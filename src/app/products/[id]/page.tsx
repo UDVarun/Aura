@@ -159,8 +159,26 @@ export default function ProductDetailPage() {
     }
 
     loadData();
+
+    const subscription = supabase
+      .channel(`product-${params.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "products",
+          filter: `id=eq.${params.id}`,
+        },
+        (payload) => {
+          setProduct((prev) => (prev ? { ...prev, ...payload.new } : (payload.new as ProductRecord)));
+        }
+      )
+      .subscribe();
+
     return () => {
       active = false;
+      supabase.removeChannel(subscription);
     };
   }, [params.id, supabase]);
 
@@ -404,9 +422,18 @@ export default function ProductDetailPage() {
             </div>
 
             <div className={styles.buyActions} ref={addActionsRef}>
-              <button className={styles.addToCartBtn} onClick={handleAddToCart}>
+              <button 
+                className={styles.addToCartBtn} 
+                onClick={() => {
+                  if (useCart().isInCart(product.id)) {
+                    openCart();
+                    return;
+                  }
+                  handleAddToCart();
+                }}
+              >
                 <ShoppingCart size={16} />
-                Add to Cart
+                {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
               </button>
               <Link href="/checkout" className={styles.buyNowBtn}>
                 Buy Now
@@ -551,8 +578,17 @@ export default function ProductDetailPage() {
             <p className={styles.stickyName}>{product.title}</p>
             <p className={styles.stickyPrice}>{formattedPrice}</p>
           </div>
-          <button className={styles.stickyAddBtn} onClick={handleAddToCart}>
-            Add to Cart
+          <button 
+            className={styles.stickyAddBtn} 
+            onClick={() => {
+              if (useCart().isInCart(product.id)) {
+                openCart();
+                return;
+              }
+              handleAddToCart();
+            }}
+          >
+            {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
           </button>
         </div>
       </div>

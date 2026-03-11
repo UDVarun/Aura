@@ -10,6 +10,7 @@ import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { AccountDataProvider } from "@/context/AccountDataContext";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { VendorProvider } from "@/context/VendorContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -37,10 +38,12 @@ export default function RootLayout({
               <CartProvider>
                 <WishlistProvider>
                   <NotificationProvider>
-                    <Navbar />
-                    <CartDrawer />
-                    <main>{children}</main>
-                    <Footer />
+                    <VendorProvider>
+                      <Navbar />
+                      <CartDrawer />
+                      <main>{children}</main>
+                      <Footer />
+                    </VendorProvider>
                   </NotificationProvider>
                 </WishlistProvider>
               </CartProvider>

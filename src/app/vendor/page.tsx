@@ -1,48 +1,27 @@
+"use client";
+
 import Link from "next/link";
 import styles from "./page.module.css";
-import { formatCurrency, parsePriceValue } from "@/lib/currency";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { ArrowRight } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
+import { useAuth } from "@/context/AuthContext";
+import { useVendor } from "@/context/VendorContext";
+import { ArrowRight, Loader2 } from "lucide-react";
 
-export default async function VendorDashboardPage() {
-    const supabase = await createServerSupabase();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+export default function VendorDashboardPage() {
+    const { user } = useAuth();
+    const { products, orders, loading, stats } = useVendor();
 
-    const { data: vendor } = user
-        ? await supabase.from("vendors").select("*").eq("user_id", user.id).single()
-        : { data: null };
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <div className={styles.loaderWrap}>
+                    <Loader2 className="animate-spin" size={40} />
+                    <p>Loading dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const { count: productCount = 0 } = await supabase
-        .from("products")
-        .select("*", { count: "exact", head: true })
-        .eq("vendor_id", user?.id ?? "");
-
-    const { count: orderCount = 0 } = await supabase
-        .from("order_items")
-        .select("*", { count: "exact", head: true })
-        .eq("vendor_id", user?.id ?? "");
-
-    const topProducts = await supabase
-        .from("products")
-        .select("id, title, price, stock_quantity")
-        .eq("vendor_id", user?.id ?? "")
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-    const ordersResponse = await supabase
-        .from("order_items")
-        .select("quantity, price_at_time")
-        .eq("vendor_id", user?.id ?? "")
-        .limit(100);
-
-    const topProductsList = topProducts.data ?? [];
-    const totalRevenue = (ordersResponse.data ?? []).reduce((sum, item) => {
-        return sum + parsePriceValue(item.price_at_time) * Number(item.quantity ?? 0);
-    }, 0);
-
-    const lowStockProducts = topProductsList.filter((product) => Number(product.stock_quantity ?? 0) < 5).length;
     const quickActions = [
         {
             title: "Add product",
@@ -58,7 +37,7 @@ export default async function VendorDashboardPage() {
         },
         {
             title: "Manage stock",
-            description: `${lowStockProducts} low-stock items need attention right now.`,
+            description: `${stats.lowStockItems} low-stock items need attention right now.`,
             href: "/vendor/products",
             label: "Update stock",
         },
@@ -76,9 +55,7 @@ export default async function VendorDashboardPage() {
                 <div>
                     <h1 className={styles.pageTitle}>Vendor Dashboard</h1>
                     <p className={styles.pageSubtitle}>
-                        {vendor
-                            ? "Manage your catalog and view a quick overview of your performance."
-                            : "You need to apply and be approved before accessing the vendor dashboard."}
+                        Manage your catalog and view a quick overview of your performance in real-time.
                     </p>
                 </div>
                 <Link href="/vendor/products" className={styles.heroButton}>
@@ -92,25 +69,25 @@ export default async function VendorDashboardPage() {
                     <div className={styles.statHeader}>
                         <span className={styles.statLabel}>Products</span>
                     </div>
-                    <div className={styles.statValue}>{productCount ?? 0}</div>
+                    <div className={styles.statValue}>{stats.productCount}</div>
                 </div>
                 <div className={`${styles.statCard} ${styles.stat_green}`}>
                     <div className={styles.statHeader}>
                         <span className={styles.statLabel}>Orders</span>
                     </div>
-                    <div className={styles.statValue}>{orderCount ?? 0}</div>
+                    <div className={styles.statValue}>{stats.totalOrders}</div>
                 </div>
                 <div className={`${styles.statCard} ${styles.stat_purple}`}>
                     <div className={styles.statHeader}>
-                        <span className={styles.statLabel}>Status</span>
+                        <span className={styles.statLabel}>Role</span>
                     </div>
-                    <div className={styles.statValue}>{vendor?.status ?? "pending"}</div>
+                    <div className={styles.statValue}>{user?.role ?? "vendor"}</div>
                 </div>
                 <div className={`${styles.statCard} ${styles.stat_gold}`}>
                     <div className={styles.statHeader}>
                         <span className={styles.statLabel}>Revenue</span>
                     </div>
-                    <div className={styles.statValue}>{formatCurrency(totalRevenue)}</div>
+                    <div className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</div>
                 </div>
             </div>
 
@@ -147,14 +124,14 @@ export default async function VendorDashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {topProductsList.map((product) => (
+                            {products.slice(0, 5).map((product) => (
                                 <tr key={product.id} className={styles.tableRow}>
                                     <td>{product.title}</td>
-                                    <td>{formatCurrency(parsePriceValue(product.price))}</td>
+                                    <td>{formatCurrency(product.price)}</td>
                                     <td>{product.stock_quantity}</td>
                                 </tr>
                             ))}
-                            {topProductsList.length === 0 && (
+                            {products.length === 0 && (
                                 <tr>
                                     <td colSpan={3} className={styles.emptyCell}>
                                         No products yet.

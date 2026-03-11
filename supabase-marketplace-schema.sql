@@ -967,3 +967,5 @@ with check (auth.uid() = user_id);
 -- Enable Realtime for new tables
 alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.user_payment_methods;
+alter publication supabase_realtime add table public.orders;
+alter publication supabase_realtime add table public.order_items;

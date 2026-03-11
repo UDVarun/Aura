@@ -27,6 +27,7 @@ type CartContextValue = {
   clearCart: () => Promise<void>;
   isOpen: boolean;
   openCart: () => void;
+  isInCart: (productId: string) => boolean;
   closeCart: () => void;
   isCartLoading: boolean;
 };
@@ -240,6 +241,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+    const isInCart = (productId: string) => {
+        return items.some((item) => item.id === productId);
+    };
+
     return {
       items,
       itemCount,
@@ -252,6 +257,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       openCart,
       closeCart,
       isCartLoading,
+      isInCart,
     };
   }, [
     items,

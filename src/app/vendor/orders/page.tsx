@@ -1,25 +1,9 @@
-import { Search } from "lucide-react";
-import styles from "../products/page.module.css";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { formatCurrency, parsePriceValue } from "@/lib/currency";
+"use client";
 
-interface VendorOrderRow {
-    id: string;
-    product_title: string;
-    quantity: number;
-    line_total: number;
-    status: string;
-    shipment_status: string;
-    created_at: string;
-    orders?: {
-        order_number?: string | null;
-        shipping_address?: {
-            firstName?: string;
-            lastName?: string;
-            email?: string;
-        } | null;
-    } | null;
-}
+import { Search, Loader2 } from "lucide-react";
+import styles from "../products/page.module.css";
+import { formatCurrency } from "@/lib/currency";
+import { useVendor } from "@/context/VendorContext";
 
 const STATUS_MAP: Record<string, string> = {
     delivered: "badge-green",
@@ -31,21 +15,18 @@ const STATUS_MAP: Record<string, string> = {
     refund_requested: "badge-red",
 };
 
-export default async function VendorOrdersPage() {
-    const supabase = await createServerSupabase();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+export default function VendorOrdersPage() {
+    const { orders, loading } = useVendor();
 
-    const { data } = user
-        ? await supabase
-              .from("order_items")
-              .select("id, product_title, quantity, line_total, status, shipment_status, created_at, orders(order_number, shipping_address)")
-              .eq("vendor_id", user.id)
-              .order("created_at", { ascending: false })
-        : { data: [] };
-
-    const orders = (data as VendorOrderRow[] | null) ?? [];
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
+                    <Loader2 className="animate-spin" size={40} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.page}>
@@ -77,7 +58,10 @@ export default async function VendorOrdersPage() {
                         <tbody>
                             {orders.map((order) => {
                                 const shipping = order.orders?.shipping_address;
-                                const customerName = [shipping?.firstName, shipping?.lastName].filter(Boolean).join(" ") || "Aura customer";
+                                const customerName = shipping 
+                                    ? [shipping.firstName, shipping.lastName].filter(Boolean).join(" ") 
+                                    : "Aura customer";
+                                
                                 return (
                                     <tr key={order.id} className={styles.tableRow}>
                                         <td><span className={styles.orderId}>{order.orders?.order_number ?? order.id}</span></td>
@@ -89,8 +73,8 @@ export default async function VendorOrdersPage() {
                                         </td>
                                         <td className={styles.productName}>{order.product_title}</td>
                                         <td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td>
-                                        <td><span className={styles.amount}>{formatCurrency(parsePriceValue(order.line_total))}</span></td>
-                                        <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.shipment_status}</span></td>
+                                        <td><span className={styles.amount}>{formatCurrency(order.line_total)}</span></td>
+                                        <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.shipment_status || order.status}</span></td>
                                     </tr>
                                 );
                             })}
