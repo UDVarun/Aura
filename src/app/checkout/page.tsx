@@ -205,24 +205,24 @@ export default function CheckoutPage() {
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label}>Phone</label>
-                  <input type="tel" className="input" value={form.phone} onChange={set("phone")} placeholder="+1 (555) 000-0000" />
+                  <input type="tel" className="input" value={form.phone} onChange={set("phone")} placeholder="+91 98765 43210" />
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label}>Street Address</label>
-                  <input type="text" className="input" value={form.address} onChange={set("address")} placeholder="123 Main St" required />
+                  <input type="text" className="input" value={form.address} onChange={set("address")} placeholder="Flat 402, MG Road" required />
                 </div>
                 <div className={styles.grid3}>
                   <div className={styles.field}>
                     <label className={styles.label}>City</label>
-                    <input type="text" className="input" value={form.city} onChange={set("city")} placeholder="New York" required />
+                    <input type="text" className="input" value={form.city} onChange={set("city")} placeholder="Bengaluru" required />
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label}>State</label>
-                    <input type="text" className="input" value={form.state} onChange={set("state")} placeholder="NY" required />
+                    <input type="text" className="input" value={form.state} onChange={set("state")} placeholder="Karnataka" required />
                   </div>
                   <div className={styles.field}>
-                    <label className={styles.label}>ZIP</label>
-                    <input type="text" className="input" value={form.zip} onChange={set("zip")} placeholder="10001" required />
+                    <label className={styles.label}>PIN Code</label>
+                    <input type="text" className="input" value={form.zip} onChange={set("zip")} placeholder="560001" required />
                   </div>
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ marginTop: "1rem" }}>Continue to Payment</button>

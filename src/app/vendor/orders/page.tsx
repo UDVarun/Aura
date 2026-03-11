@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import styles from "../products/page.module.css";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { formatCurrency, parsePriceValue } from "@/lib/currency";
 
 interface VendorOrderRow {
     id: string;
@@ -88,7 +89,7 @@ export default async function VendorOrdersPage() {
                                         </td>
                                         <td className={styles.productName}>{order.product_title}</td>
                                         <td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td>
-                                        <td><span className={styles.amount}>₹{Number(order.line_total).toLocaleString("en-IN")}</span></td>
+                                        <td><span className={styles.amount}>{formatCurrency(parsePriceValue(order.line_total))}</span></td>
                                         <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.shipment_status}</span></td>
                                     </tr>
                                 );

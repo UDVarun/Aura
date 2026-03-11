@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
+import { parsePriceValue } from "@/lib/currency";
 import { useRouter, usePathname } from "next/navigation";
 
 export type CartItem = {
@@ -93,7 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         data.map((row) => ({
           id: row.product_id,
           name: row.product_name,
-          price: row.product_price,
+          price: parsePriceValue(row.product_price),
           image: row.product_image,
           category: row.product_category,
           quantity: row.quantity,

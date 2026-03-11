@@ -35,7 +35,8 @@ interface AuthContextValue {
     ) => Promise<{ success: boolean; error?: string }>;
     loginWithProvider: (
         provider: OAuthProvider,
-        role?: "customer" | "vendor"
+        role?: "customer" | "vendor",
+        nextPath?: string
     ) => Promise<{ success: boolean; error?: string }>;
     register: (
         name: string,
@@ -171,22 +172,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const loginWithProvider = useCallback(
         async (
             provider: OAuthProvider,
-            role?: "customer" | "vendor"
+            role?: "customer" | "vendor",
+            nextPath?: string
         ): Promise<{ success: boolean; error?: string }> => {
             const redirectUrl = new URL(`${window.location.origin}/auth/callback`);
             if (role) redirectUrl.searchParams.set("role", role);
+            if (nextPath) redirectUrl.searchParams.set("next", nextPath);
 
+            console.log(`[AUTH] Initiating OAuth for ${provider}, redirecting to: ${redirectUrl.toString()}`);
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
                     redirectTo: redirectUrl.toString(),
                     queryParams: {
-                        // Google-specific: always show account picker
                         ...(provider === "google" && { prompt: "select_account" }),
                     },
                 },
             });
-            if (error) return { success: false, error: error.message };
+            if (error) {
+                console.error(`[AUTH] OAuth error (${provider}):`, error.message);
+                return { success: false, error: error.message };
+            }
+
             // Browser will redirect to OAuth provider — no return value needed
             return { success: true };
         },
@@ -205,19 +212,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 email: email.trim().toLowerCase(),
                 password,
                 options: {
-                    data: { full_name: name },
+                    data: { 
+                        full_name: name,
+                        role: role // Pass role to trigger
+                    },
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
                 },
             });
-            if (error) return { success: false, error: error.message };
+
+            if (error) {
+                console.error("[AUTH] Registration error:", error.message);
+                return { success: false, error: error.message };
+            }
+
             if (data?.user?.id) {
                 const finalRole = role === "vendor" ? "vendor" : "customer";
-                await supabase.from("profiles").upsert({
-                    id: data.user.id,
-                    email: data.user.email ?? email.trim().toLowerCase(),
-                    role: finalRole,
-                });
+                console.log(`[AUTH] User created (${data.user.id}). Attempting client-side profile upsert for role: ${finalRole}`);
+                
+                // This upsert might fail if email confirmation is ON (user not yet session-authenticated)
+                // but the DB trigger 'handle_new_user' will catch the metadata above.
+                try {
+                    const { error: upsertError } = await supabase.from("profiles").upsert({
+                        id: data.user.id,
+                        email: data.user.email ?? email.trim().toLowerCase(),
+                        role: finalRole,
+                    });
+                    if (upsertError) console.warn("[AUTH] Client-side profile upsert skipped (expected if email confirmation is ON):", upsertError.message);
+                } catch (e) {
+                    console.warn("[AUTH] Client-side profile upsert ignored.");
+                }
             }
+
             // sessionCreated = true means email confirmation is OFF → user is already logged in
             return { success: true, sessionCreated: !!data.session };
         },

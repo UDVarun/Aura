@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { formatOrderNumber, requireRole } from "@/lib/marketplace";
+import { parsePriceValue } from "@/lib/currency";
 
 export async function POST(request: NextRequest) {
     try {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
         }
 
         const productMap = new Map((products ?? []).map((product) => [product.id, product]));
-        const subtotal = cartItems.reduce((sum, item) => sum + Number(item.product_price) * Number(item.quantity), 0);
+        const subtotal = cartItems.reduce((sum, item) => sum + parsePriceValue(item.product_price) * Number(item.quantity), 0);
         const shippingAmount = Number(payload.shippingAmount ?? 0);
         const taxAmount = Number(payload.taxAmount ?? 0);
         const totalAmount = subtotal + shippingAmount + taxAmount;
@@ -78,7 +79,8 @@ export async function POST(request: NextRequest) {
                 throw new Error(`Product ${item.product_name} is missing a vendor.`);
             }
 
-            const lineTotal = Number(item.product_price) * Number(item.quantity);
+            const normalizedPrice = parsePriceValue(item.product_price);
+            const lineTotal = normalizedPrice * Number(item.quantity);
             return {
                 order_id: order.id,
                 product_id: item.product_id,
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
                 customer_id: user.id,
                 product_title: product.title ?? item.product_name,
                 quantity: item.quantity,
-                price_at_time: item.product_price,
+                price_at_time: normalizedPrice,
                 line_total: lineTotal,
                 status: "placed",
                 shipment_status: "pending",

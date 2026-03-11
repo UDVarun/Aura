@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Plus, Search, Edit, Trash2, Package, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, parsePriceValue } from "@/lib/currency";
 import { deleteProductImage } from "@/lib/supabase/storage";
 import styles from "./page.module.css";
 
@@ -22,10 +22,6 @@ interface VendorProductRow {
     stock_quantity: number;
     image_url?: string | null;
     categories?: { name?: string | null } | null;
-}
-
-function toNumber(value: string | number | null | undefined) {
-    return typeof value === "number" ? value : parseFloat(value?.toString() ?? "0");
 }
 
 function getErrorMessage(err: unknown) {
@@ -150,7 +146,7 @@ export default function VendorProductsPage() {
                                                 </div>
                                             </td>
                                             <td>{p.categories?.name || "Uncategorized"}</td>
-                                            <td className={styles.price}>{formatCurrency(toNumber(p.price))}</td>
+                                            <td className={styles.price}>{formatCurrency(parsePriceValue(p.price))}</td>
                                             <td className={p.stock_quantity === 0 ? styles.stockZero : p.stock_quantity < 5 ? styles.stockLow : styles.stockOk}>{p.stock_quantity}</td>
                                             <td><span className={`badge ${STATUS_MAP[stockStatus].cls}`}>{STATUS_MAP[stockStatus].label}</span></td>
                                             <td>

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import styles from "./page.module.css";
 import Link from "next/link";
 import { ProductCard, Product } from "@/components/ui/ProductCard";
@@ -113,7 +114,28 @@ const TRUST_POINTS = [
   { value: "Premium", label: "Curated Quality" },
 ];
 
-export default function Home() {
+type HomePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function Home({ searchParams }: HomePageProps) {
+  const params = (await searchParams) ?? {};
+  const code = typeof params.code === "string" ? params.code : undefined;
+
+  if (code) {
+    const callbackParams = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === "string") {
+        callbackParams.set(key, value);
+      } else if (Array.isArray(value)) {
+        value.forEach((entry) => callbackParams.append(key, entry));
+      }
+    }
+
+    redirect(`/auth/callback?${callbackParams.toString()}`);
+  }
+
   return (
     <div className={styles.page}>
       {/* 1. Hero Carousel */}

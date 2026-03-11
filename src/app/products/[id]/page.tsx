@@ -21,7 +21,7 @@ import styles from "./page.module.css";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency, INR_SYMBOL } from "@/lib/currency";
+import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
 
 type ProductRecord = {
   id: string;
@@ -165,7 +165,7 @@ export default function ProductDetailPage() {
   }, [params.id, supabase]);
 
   const formattedPrice = useMemo(() => {
-    return formatCurrency(Number(product?.price ?? 0));
+    return formatCurrency(parsePriceValue(product?.price));
   }, [product?.price]);
 
   const priceAmount = formattedPrice.startsWith(INR_SYMBOL)
@@ -189,7 +189,7 @@ export default function ProductDetailPage() {
     await addItem({
       id: product.id,
       name: product.title,
-      price: Number(product.price || 0),
+      price: parsePriceValue(product.price),
       image: product.image_url ?? "",
       category: product.categories?.name ?? "Marketplace",
       quantity,

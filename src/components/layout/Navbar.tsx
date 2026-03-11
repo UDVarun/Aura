@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, Menu, Search, User, X, LogOut, LayoutDashboard, Store, Settings, CircleUserRound, Sun, Moon, ChevronDown } from "lucide-react";
+import { ShoppingCart, Menu, Search, User, X, LogOut, LayoutDashboard, Store, Settings, CircleUserRound, Sun, Moon, ChevronDown, Bell } from "lucide-react";
 import styles from "./Navbar.module.css";
 import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
+import { useNotifications } from "@/context/NotificationContext";
 
 const CUSTOMER_NAV = [
     { href: "/", label: "Home" },
@@ -26,6 +27,7 @@ export default function Navbar() {
     const { user, logout, isAuthenticated } = useAuth();
     const { theme, setTheme } = useTheme();
     const { itemCount, openCart } = useCart();
+    const { unreadCount } = useNotifications();
     const router = useRouter();
     const pathname = usePathname();
     const userMenuRef = useRef<HTMLDivElement>(null);
@@ -198,6 +200,13 @@ export default function Navbar() {
                                 </div>
                             )}
                         </div>
+
+                        {isAuthenticated && (
+                            <Link href="/account?tab=notifications" className={styles.iconButton} aria-label="Notifications">
+                                <Bell size={20} />
+                                {unreadCount > 0 && <span className={styles.cartBadge}>{unreadCount}</span>}
+                            </Link>
+                        )}
 
                         <button className={styles.cartButton} aria-label="Shopping cart" onClick={openCart}>
                             <ShoppingCart size={20} />

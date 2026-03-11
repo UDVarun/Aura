@@ -921,4 +921,49 @@ using (
 -- =====================================================
 select id, email, role from public.profiles;
 select id, name, slug from public.categories order by name;
-select id, name, public from storage.buckets where id = 'product-images';
+select id, name, public from storage.buckets where id = 'product-images';-- =====================================================
+-- 20. NOTIFICATIONS
+-- =====================================================
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text not null default 'info',
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+create policy "Users can manage own notifications"
+on public.notifications
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+-- =====================================================
+-- 21. PAYMENT METHODS
+-- =====================================================
+create table if not exists public.user_payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null, -- card, upi, wallet
+  provider text,      -- Visa, Mastercard, GooglePay
+  last4 text,         -- for cards
+  upi_id text,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.user_payment_methods enable row level security;
+
+create policy "Users can manage own payment methods"
+on public.user_payment_methods
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+-- Enable Realtime for new tables
+alter publication supabase_realtime add table public.notifications;
+alter publication supabase_realtime add table public.user_payment_methods;

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus, Search, Edit, Trash2, Filter, Package, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, parsePriceValue } from "@/lib/currency";
 import { deleteProductImage } from "@/lib/supabase/storage";
 import styles from "./page.module.css";
 
@@ -120,8 +120,7 @@ export default function AdminProductsPage() {
                             <tbody>
                                 {products.map((p) => {
                                     const stockStatus = p.stock_quantity === 0 ? "out_of_stock" : p.stock_quantity < 5 ? "low_stock" : "active";
-                                    const priceValue =
-                                        typeof p.price === "number" ? p.price : parseFloat(p.price ?? "0");
+                                    const priceValue = parsePriceValue(p.price);
                                     return (
                                         <tr key={p.id} className={styles.tableRow}>
                                             <td className={styles.productCell}>

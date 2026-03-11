@@ -10,7 +10,7 @@ import clsx from "clsx";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
-import { formatCurrency, INR_SYMBOL } from "@/lib/currency";
+import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
 
 const BRANDS = ["Sony", "Aura", "Logitech", "Herman Miller", "Apple"];
 
@@ -122,10 +122,7 @@ function ProductsContent() {
       // Note: brand is not in our SQL schema yet, using "Aura" as default for now or matching if present
       const brandMatch = selectedBrands.length === 0 || selectedBrands.includes("Aura");
 
-      const price =
-        typeof product.price === "number"
-          ? product.price
-          : parseFloat(product.price?.toString() ?? "0");
+      const price = parsePriceValue(product.price);
       const priceMatch =
         priceFilter === "all" ||
         (priceFilter === "under5000" && price < 5000) ||
@@ -247,8 +244,7 @@ function ProductsContent() {
             ) : (
               <div className={styles.grid}>
                 {filteredProducts.map((product) => {
-                  const priceStr = String(product.price || "0").replace(/[^0-9.]/g, "");
-                  const priceValue = parseFloat(priceStr) || 0;
+                  const priceValue = parsePriceValue(product.price);
                   return (
                     <Link href={`/products/${product.id}`} key={product.id} className={styles.card}>
                       <div className={styles.imageWrapper}>

@@ -74,7 +74,7 @@ function LoginForm() {
     const handleOAuth = async (provider: "google" | "github") => {
         setOauthLoading(provider);
         setError("");
-        const result = await loginWithProvider(provider);
+        const result = await loginWithProvider(provider, undefined, redirect);
         if (!result.success) {
             setError(result.error || `${provider} login failed.`);
             setOauthLoading(null);

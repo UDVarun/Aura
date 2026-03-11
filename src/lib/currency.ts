@@ -19,3 +19,17 @@ export function formatCurrencyDifference(value: number) {
     if (value <= 0) return formatCurrency(0);
     return formatCurrency(value);
 }
+
+export function parsePriceValue(value: number | string | null | undefined) {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    if (typeof value === "string") {
+        const normalized = value.replace(/[^0-9.-]/g, "");
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+}

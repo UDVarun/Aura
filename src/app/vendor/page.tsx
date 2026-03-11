@@ -1,6 +1,6 @@
 import Link from "next/link";
 import styles from "./page.module.css";
-import { formatCurrency } from "@/lib/currency";
+import { formatCurrency, parsePriceValue } from "@/lib/currency";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { ArrowRight } from "lucide-react";
 
@@ -39,7 +39,7 @@ export default async function VendorDashboardPage() {
 
     const topProductsList = topProducts.data ?? [];
     const totalRevenue = (ordersResponse.data ?? []).reduce((sum, item) => {
-        return sum + Number(item.price_at_time ?? 0) * Number(item.quantity ?? 0);
+        return sum + parsePriceValue(item.price_at_time) * Number(item.quantity ?? 0);
     }, 0);
 
     const lowStockProducts = topProductsList.filter((product) => Number(product.stock_quantity ?? 0) < 5).length;
@@ -150,7 +150,7 @@ export default async function VendorDashboardPage() {
                             {topProductsList.map((product) => (
                                 <tr key={product.id} className={styles.tableRow}>
                                     <td>{product.title}</td>
-                                    <td>{formatCurrency(Number(product.price || 0))}</td>
+                                    <td>{formatCurrency(parsePriceValue(product.price))}</td>
                                     <td>{product.stock_quantity}</td>
                                 </tr>
                             ))}

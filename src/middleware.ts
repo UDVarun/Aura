@@ -11,6 +11,16 @@ export async function middleware(request: NextRequest) {
     const isVendorRoute = pathname.startsWith(VENDOR_PREFIX);
     const isVendorRoot = pathname === VENDOR_PREFIX || pathname === `${VENDOR_PREFIX}/`;
 
+    /*
+    // Some Supabase/provider configurations return OAuth users to `/` with `?code=...`.
+    // Normalize those requests through our dedicated callback route so session exchange always happens.
+    if (request.nextUrl.searchParams.get("code") && pathname !== "/auth/callback") {
+        const callbackUrl = request.nextUrl.clone();
+        callbackUrl.pathname = "/auth/callback";
+        return NextResponse.redirect(callbackUrl);
+    }
+    */
+
     // Refresh the Supabase session on every request (required by @supabase/ssr)
     const { supabaseResponse, user, supabase } = await updateSession(request);
 
@@ -80,11 +90,15 @@ export async function middleware(request: NextRequest) {
 
     // 3. Redirect already-logged-in users away from auth pages
     if (AUTH_ROUTES.some((r) => pathname.startsWith(r)) && user) {
+        const requestedRedirect = request.nextUrl.searchParams.get("redirect");
         const dashboardMap: Record<string, string> = {
             admin: "/admin",
             vendor: "/vendor",
             customer: "/",
         };
+        if (requestedRedirect && requestedRedirect.startsWith("/")) {
+            return NextResponse.redirect(new URL(requestedRedirect, request.url));
+        }
         return NextResponse.redirect(
             new URL(dashboardMap[role ?? "customer"] ?? "/", request.url)
         );
