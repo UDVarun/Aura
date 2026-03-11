@@ -817,8 +817,8 @@ using (
 -- =====================================================
 -- ADMIN PROMOTION (Helper)
 -- =====================================================
--- UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}' WHERE email = 'varunud96@gmail.com';
--- INSERT INTO public.profiles (id, email, role) SELECT id, email, 'admin' FROM auth.users WHERE email = 'varunud96@gmail.com' ON CONFLICT (id) DO UPDATE SET role = 'admin';
+UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}' WHERE id = '79e52fca-a987-4375-ae0f-36982029484a';
+INSERT INTO public.profiles (id, email, role) VALUES ('79e52fca-a987-4375-ae0f-36982029484a', 'varunud96@gmail.com', 'admin') ON CONFLICT (id) DO UPDATE SET role = 'admin';
 
 -- =====================================================
 -- 27. VERIFY
