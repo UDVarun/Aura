@@ -86,30 +86,32 @@ function ProductsContent() {
   useEffect(() => {
     const controller = new AbortController();
     
-    async function fetchData() {
-      console.log("[PRODUCTS] Starting fetch...");
-      const startTime = performance.now();
-      
-      // Sanity check for env vars
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      console.log("[PRODUCTS] Env Check:", {
-        urlPresent: !!supabaseUrl,
-        keyPresent: !!supabaseKey,
-        urlPrefix: supabaseUrl?.substring(0, 15),
-      });
+      async function fetchData() {
+        console.log("[PRODUCTS] Starting fetch sequence...");
+        const startTime = performance.now();
+        
+        // Sanity check for env vars
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        
+        console.log("[PRODUCTS] Env Check:", {
+          urlPresent: !!supabaseUrl,
+          keyPresent: !!supabaseKey,
+        });
 
-      if (!supabaseUrl || !supabaseKey) {
-        setError("Supabase configuration is missing. Check your .env.local file.");
-        setLoading(false);
-        return;
-      }
-      
-      try {
-          // Set a timeout of 10 seconds for the initial fetch
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
+        if (!supabaseUrl || !supabaseKey) {
+          setError("Supabase configuration is missing. Check your .env.local file.");
+          setLoading(false);
+          return;
+        }
 
+        // 15s absolute timeout
+        const timeoutId = setTimeout(() => {
+          console.warn("[PRODUCTS] Fetch reached 15s timeout limit.");
+          controller.abort();
+        }, 15000);
+
+        try {
           const [{ data: productData, error: productError }, { data: categoryData, error: categoryError }] = await Promise.all([
             supabase
               .from("products")
@@ -133,18 +135,21 @@ function ProductsContent() {
           setProducts(productData || []);
           setCategories(categoryData || []);
         } catch (err: any) {
+          clearTimeout(timeoutId);
           const duration = (performance.now() - startTime).toFixed(2);
-          const msg = err.name === 'AbortError' ? 'Request timed out after 10s' : getErrorMessage(err);
-          console.error(`[PRODUCTS] Detailed Error after ${duration}ms:`, {
-            error: err,
-            message: err.message,
-            code: err.code,
-            details: err.details,
-            hint: err.hint
-          });
-          setError(msg);
+          if (err.name === 'AbortError') {
+            console.log(`[PRODUCTS] Fetch aborted/timed out after ${duration}ms.`);
+            setError("The request timed out. Please check your connection or try again.");
+          } else {
+            console.error(`[PRODUCTS] Fetch failed after ${duration}ms:`, err);
+            setError(getErrorMessage(err));
+          }
         } finally {
-          setLoading(false);
+          // err is not accessible here, so we just set loading to false
+          // unless the component was unmounted
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
         }
       }
       fetchData();
