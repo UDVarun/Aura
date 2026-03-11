@@ -34,7 +34,8 @@ type ProductRecord = {
   stock_quantity: number;
   image_url: string | null;
   vendor_id: string | null;
-  categories?: { name?: string | null } | null;
+  categories?: any;
+  product_images?: { url: string; display_order: number }[] | null;
 };
 
 type ProductQuestion = {
@@ -121,7 +122,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       setLoading(true);
       setFeedback("");
 
-      const { data: productData, error } = await supabase
+      let { data: productData, error } = await supabase
         .from("products")
         .select(`
           id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
@@ -129,16 +130,38 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           product_images(url, display_order)
         `)
         .eq("id", id)
-        .single();
+        .single() as any;
+
+      // Fallback: If product_images relationship is missing (table not created), fetch product without it
+      if (error && (error.code === "PGRST200" || error.code === "PGRST205")) {
+          console.warn("[ProductDetailPage] product_images table missing or relationship broken. Falling back to simple fetch.");
+          const fallback = await supabase
+            .from("products")
+            .select(`
+                id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
+                categories(name)
+            `)
+            .eq("id", id)
+            .single() as any;
+          
+          // Inject an empty array to satisfy the ProductRecord type
+          if (fallback.data) {
+              (fallback.data as any).product_images = [];
+          }
+          productData = fallback.data;
+          error = fallback.error;
+      }
 
       if (!active) return;
       if (error || !productData) {
+        console.error("[ProductDetailPage] Error fetching product:", error, "ID:", id);
         setProduct(null);
         setLoading(false);
         return;
       }
 
-      setProduct(productData as any);
+      console.log("[ProductDetailPage] Product loaded:", productData.title);
+      setProduct(productData as unknown as ProductRecord);
 
       if (productData.vendor_id) {
         const { data: vendor } = await supabase
@@ -189,7 +212,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             .eq("id", id)
             .single()
             .then(({ data }) => {
-              if (data) setProduct(data as any);
+              if (data) setProduct(data as unknown as ProductRecord);
             });
         }
       )
@@ -211,14 +234,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const imageList = useMemo(() => {
     const list: string[] = [];
-    const primaryImage = product?.image_url;
-    if (primaryImage) list.push(primaryImage);
-    
+    if (product?.image_url) list.push(product.image_url);
+
     const extraImages = (product as any)?.product_images;
     if (extraImages && Array.isArray(extraImages)) {
-      const sorted = [...extraImages].sort((a, b) => a.display_order - b.display_order);
+      const sorted = [...extraImages].sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0));
       sorted.forEach(img => {
-        if (img.url !== primaryImage) {
+        if (img.url && img.url !== product?.image_url) {
           list.push(img.url);
         }
       });
@@ -227,7 +249,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     if (list.length === 0) {
       return ["https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=1200&auto=format&fit=crop"];
     }
-    return list;
+    // De-duplicate URLs
+    return Array.from(new Set(list));
   }, [product]);
 
   const averageRating = reviews.length === 0
@@ -404,7 +427,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className={styles.infoSection}>
             <div className={styles.metaRow}>
               <div className={styles.brandLink}>
-                  {product.brand || "Aura"}
+                {product.brand || "Aura"}
               </div>
               <span className={styles.metaDot}>•</span>
               <div className={styles.categoryBadge}>
@@ -474,8 +497,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className={styles.buyActions} ref={addActionsRef}>
-              <button 
-                className={styles.addToCartBtn} 
+              <button
+                className={styles.addToCartBtn}
                 onClick={() => {
                   if (isInCart(product.id)) {
                     openCart();
@@ -630,8 +653,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             <p className={styles.stickyName}>{product.title}</p>
             <p className={styles.stickyPrice}>{formattedPrice}</p>
           </div>
-          <button 
-            className={styles.stickyAddBtn} 
+          <button
+            className={styles.stickyAddBtn}
             onClick={() => {
               if (isInCart(product.id)) {
                 openCart();

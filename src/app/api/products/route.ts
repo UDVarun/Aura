@@ -109,11 +109,15 @@ export async function PATCH(request: NextRequest) {
 
         // 2. Update Multiple Images (Delete old and insert new for simplicity in sync)
         if (payload.images && Array.isArray(payload.images)) {
-            // Delete old images
-            await supabase
+            // Delete old images - attempt gracefully
+            const { error: delError } = await supabase
                 .from("product_images")
                 .delete()
                 .eq("product_id", product.id);
+            
+            if (delError) {
+                console.warn("[API/PRODUCTS] Note: Could not delete old images (table might be missing):", delError.message);
+            }
 
             if (payload.images.length > 0) {
                 const imageRecords = payload.images.map((img: any, index: number) => ({
@@ -127,7 +131,9 @@ export async function PATCH(request: NextRequest) {
                     .from("product_images")
                     .insert(imageRecords);
                 
-                if (imgError) console.error("[API/PRODUCTS] Error updating images:", imgError);
+                if (imgError) {
+                    console.error("[API/PRODUCTS] Error updating images:", imgError.message);
+                }
             }
         }
 

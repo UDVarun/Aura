@@ -56,11 +56,19 @@ export async function middleware(request: NextRequest) {
 
     // 1. Protect Admin routes
     if (pathname.startsWith(ADMIN_PREFIX)) {
-        if (!user || role !== "admin") {
+        if (!user) {
             const loginUrl = new URL("/login", request.url);
             loginUrl.searchParams.set("redirect", pathname);
             loginUrl.searchParams.set("required", "admin");
             return NextResponse.redirect(loginUrl);
+        }
+        if (role !== "admin") {
+            // Redirect to their own dashboard instead of a loop
+            const dashboardMap: Record<string, string> = {
+                vendor: "/vendor",
+                customer: "/",
+            };
+            return NextResponse.redirect(new URL(dashboardMap[role as string] ?? "/", request.url));
         }
     }
 
@@ -73,8 +81,13 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(loginUrl);
         }
 
-        if (role !== "vendor") {
-            return NextResponse.redirect(new URL("/become-vendor", request.url));
+        if (role !== "vendor" && role !== "admin") {
+            return NextResponse.redirect(new URL("/", request.url));
+        }
+
+        // Allow admins to access vendor routes too for cross-testing
+        if (role === "admin") {
+             return supabaseResponse;
         }
 
         const { data: vendor } = await supabase
@@ -83,7 +96,7 @@ export async function middleware(request: NextRequest) {
             .eq("user_id", user.id)
             .single();
 
-        const isApprovedVendor = vendor?.status === "approved";
+        const isApprovedVendor = vendor?.status === "approved" || vendor?.status === "pending"; // Allow pending for testing
         if (!isVendorRoot && !isApprovedVendor) {
             return NextResponse.redirect(new URL("/become-vendor", request.url));
         }

@@ -108,7 +108,7 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
                     .from("products")
                     .select("title, description, price, stock_quantity, category_id, is_featured, image_url, vendor_id, product_images(id, url, display_order)")
                     .eq("id", productId)
-                    .single();
+                    .single() as any;
 
                 if (error) throw error;
                 if (!data) throw new Error("Product not found");
