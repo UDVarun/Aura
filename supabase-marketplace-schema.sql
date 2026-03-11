@@ -969,3 +969,5 @@ alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.user_payment_methods;
 alter publication supabase_realtime add table public.orders;
 alter publication supabase_realtime add table public.order_items;
+alter publication supabase_realtime add table public.products;
+alter publication supabase_realtime add table public.cart_items;

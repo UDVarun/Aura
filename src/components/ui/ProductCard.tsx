@@ -17,6 +17,7 @@ export interface Product {
     category: string;
     rating: number;
     isNew?: boolean;
+    is_featured?: boolean;
 }
 
 interface ProductCardProps {

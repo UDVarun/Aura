@@ -11,6 +11,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
+import { ProductCard, Product } from "@/components/ui/ProductCard";
 
 const BRANDS = ["Sony", "Aura", "Logitech", "Herman Miller", "Apple"];
 
@@ -57,7 +58,7 @@ function StarRating({ rating, count }: { rating: number; count?: number }) {
 }
 
 function ProductsContent() {
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, isInCart } = useCart();
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -117,9 +118,21 @@ function ProductsContent() {
                   if (data) setProducts((prev) => [data, ...prev]);
                 });
             } else if (payload.eventType === "UPDATE") {
-              setProducts((prev) =>
-                prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
-              );
+              // Re-fetch to get joined category data
+              supabase
+                .from("products")
+                .select("*, categories(name, slug)")
+                .eq("id", payload.new.id)
+                .single()
+                .then(({ data, error }) => {
+                  if (data && !error) {
+                    setProducts((prev) =>
+                      prev.map((p) => (p.id === data.id ? data : p))
+                    );
+                  } else {
+                    console.error("Failed to re-fetch product for real-time update:", error);
+                  }
+                });
             } else if (payload.eventType === "DELETE") {
               setProducts((prev) => prev.filter((p) => p.id === payload.old.id));
             }
@@ -148,7 +161,9 @@ function ProductsContent() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const productCategorySlug = product.categories?.slug?.toLowerCase() ?? "";
+      // Defensive check if categories is returned as an array or object
+      const categoriesData = Array.isArray(product.categories) ? product.categories[0] : product.categories;
+      const productCategorySlug = categoriesData?.slug?.toLowerCase() ?? "";
       const categoryMatch = selectedCategory === "all" || productCategorySlug === selectedCategory;
       // Note: brand is not in our SQL schema yet, using "Aura" as default for now or matching if present
       const brandMatch = selectedBrands.length === 0 || selectedBrands.includes("Aura");
@@ -276,54 +291,22 @@ function ProductsContent() {
               <div className={styles.grid}>
                 {filteredProducts.map((product) => {
                   const priceValue = parsePriceValue(product.price);
+                  const imageUrl = product.image_url || "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop";
+                  const categoryName = (Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name) || "Marketplace";
+                  
+                  // Map database row to ProductCard interface
+                  const cardProduct: Product = {
+                    id: product.id,
+                    name: product.title,
+                    price: priceValue,
+                    image: imageUrl,
+                    category: categoryName,
+                    rating: 4.5, // Default for marketplace
+                    is_featured: product.is_featured ?? false
+                  };
+
                   return (
-                    <Link href={`/products/${product.id}`} key={product.id} className={styles.card}>
-                      <div className={styles.imageWrapper}>
-                        <Image
-                          src={product.image_url || "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop"}
-                          alt={product.title}
-                          fill
-                          className={styles.image}
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                        {product.is_featured && <span className={styles.badge}>Featured</span>}
-                      </div>
-                      <div className={styles.cardBody}>
-                        <div className={styles.cardTop}>
-                          <div className={styles.metaRow}>
-                            <span className={styles.brand}>Aura</span>
-                            <span className={styles.category}>{product.categories?.name}</span>
-                          </div>
-                          <h2 className={styles.cardName}>{product.title}</h2>
-                          <div className={styles.ratingRow}>
-                            <StarRating rating={4.5} count={12} />
-                          </div>
-                          <div className={styles.priceRow}>{formatCurrency(priceValue)}</div>
-                          <p className={styles.deliveryText}>Premium shipping included</p>
-                        </div>
-                        <button
-                          className={styles.addBtn}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (useCart().isInCart(product.id)) {
-                              openCart();
-                              return;
-                            }
-                            const imageUrl = product.image_url ?? "";
-                            addItem({
-                              id: product.id,
-                              name: product.title,
-                              price: priceValue,
-                              image: imageUrl,
-                              category: product.categories?.name ?? "",
-                            });
-                            openCart();
-                          }}
-                        >
-                          {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
-                        </button>
-                      </div>
-                    </Link>
+                    <ProductCard key={product.id} product={cardProduct} />
                   );
                 })}
               </div>

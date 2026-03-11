@@ -77,7 +77,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, isInCart } = useCart();
   const { isAuthenticated } = useAuth();
 
   const [product, setProduct] = useState<ProductRecord | null>(null);
@@ -171,7 +171,15 @@ export default function ProductDetailPage() {
           filter: `id=eq.${params.id}`,
         },
         (payload) => {
-          setProduct((prev) => (prev ? { ...prev, ...payload.new } : (payload.new as ProductRecord)));
+          // Re-fetch to get joined category data
+          supabase
+            .from("products")
+            .select("id, title, description, price, stock_quantity, image_url, vendor_id, categories(name)")
+            .eq("id", params.id)
+            .single()
+            .then(({ data }) => {
+              if (data) setProduct(data as ProductRecord);
+            });
         }
       )
       .subscribe();
@@ -209,7 +217,7 @@ export default function ProductDetailPage() {
       name: product.title,
       price: parsePriceValue(product.price),
       image: product.image_url ?? "",
-      category: product.categories?.name ?? "Marketplace",
+      category: (Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name) ?? "Marketplace",
       quantity,
     });
     openCart();
@@ -366,7 +374,9 @@ export default function ProductDetailPage() {
           </div>
 
           <div className={styles.infoSection}>
-            <div className={styles.brandLink}>{product.categories?.name ?? "Marketplace"}</div>
+            <div className={styles.brandLink}>
+                {(Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name) ?? "Marketplace"}
+            </div>
             <h1 className={styles.title}>{product.title}</h1>
             <Stars rating={averageRating} count={reviews.length} />
 
@@ -425,7 +435,7 @@ export default function ProductDetailPage() {
               <button 
                 className={styles.addToCartBtn} 
                 onClick={() => {
-                  if (useCart().isInCart(product.id)) {
+                  if (isInCart(product.id)) {
                     openCart();
                     return;
                   }
@@ -433,7 +443,7 @@ export default function ProductDetailPage() {
                 }}
               >
                 <ShoppingCart size={16} />
-                {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
+                {isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
               </button>
               <Link href="/checkout" className={styles.buyNowBtn}>
                 Buy Now
@@ -581,14 +591,14 @@ export default function ProductDetailPage() {
           <button 
             className={styles.stickyAddBtn} 
             onClick={() => {
-              if (useCart().isInCart(product.id)) {
+              if (isInCart(product.id)) {
                 openCart();
                 return;
               }
               handleAddToCart();
             }}
           >
-            {useCart().isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
+            {isInCart(product.id) ? "In Cart — View" : "Add to Cart"}
           </button>
         </div>
       </div>
