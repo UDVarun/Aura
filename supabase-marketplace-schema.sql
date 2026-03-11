@@ -38,7 +38,9 @@ begin
     coalesce(new.raw_user_meta_data->>'role', 'customer')
   )
   on conflict (id) do update
-  set email = excluded.email;
+  set 
+    email = excluded.email,
+    role = excluded.role;
 
   return new;
 end;
@@ -50,27 +52,17 @@ after insert on auth.users
 for each row
 execute function public.handle_new_user();
 
--- Backfill any missing profiles for already-created auth users
+-- Force sync all profiles from auth metadata
 insert into public.profiles (id, email, role)
 select
   u.id,
   coalesce(u.email, ''),
   coalesce(u.raw_user_meta_data->>'role', 'customer')
 from auth.users u
-left join public.profiles p on p.id = u.id
-where p.id is null
-on conflict (id) do nothing;
-
--- Promote your account to admin
-insert into public.profiles (id, email, role)
-values (
-  '6fe718bf-aba8-49b4-aa6b-df9e26db2a5e',
-  'varunud96@gmail.com',
-  'admin'
-)
 on conflict (id) do update
-set email = excluded.email,
-    role = 'admin';
+set 
+  email = excluded.email,
+  role = excluded.role;
 
 -- =====================================================
 -- 3. ADMIN HELPER
@@ -522,16 +514,12 @@ with check (auth.uid() = id);
 create policy "Admins can view all profiles"
 on public.profiles
 for select
-using (
-  (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
-);
+using (public.is_admin());
 
 create policy "Admins can update all profiles"
 on public.profiles
 for update
-using (
-  (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
-);
+using (public.is_admin());
 
 -- =====================================================
 -- 18. VENDORS POLICIES
