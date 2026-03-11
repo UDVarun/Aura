@@ -28,6 +28,9 @@ type ProductRecord = {
   title: string;
   description: string | null;
   price: number | string;
+  brand: string | null;
+  tier: "elite" | "premium" | "standard" | null;
+  rating: number | null;
   stock_quantity: number;
   image_url: string | null;
   vendor_id: string | null;
@@ -120,7 +123,7 @@ export default function ProductDetailPage() {
 
       const { data: productData, error } = await supabase
         .from("products")
-        .select("id, title, description, price, stock_quantity, image_url, vendor_id, categories(name)")
+        .select("id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, categories(name)")
         .eq("id", params.id)
         .single();
 
@@ -174,7 +177,7 @@ export default function ProductDetailPage() {
           // Re-fetch to get joined category data
           supabase
             .from("products")
-            .select("id, title, description, price, stock_quantity, image_url, vendor_id, categories(name)")
+            .select("id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, categories(name)")
             .eq("id", params.id)
             .single()
             .then(({ data }) => {
@@ -374,11 +377,25 @@ export default function ProductDetailPage() {
           </div>
 
           <div className={styles.infoSection}>
-            <div className={styles.brandLink}>
+            <div className={styles.metaRow}>
+              <div className={styles.brandLink}>
+                  {product.brand || "Aura"}
+              </div>
+              <span className={styles.metaDot}>•</span>
+              <div className={styles.categoryBadge}>
                 {(Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name) ?? "Marketplace"}
+              </div>
+              {product.tier && product.tier !== 'standard' && (
+                <>
+                  <span className={styles.metaDot}>•</span>
+                  <div className={clsx(styles.tierBadge, styles[`tier${product.tier.charAt(0).toUpperCase() + product.tier.slice(1)}`])}>
+                    {product.tier}
+                  </div>
+                </>
+              )}
             </div>
             <h1 className={styles.title}>{product.title}</h1>
-            <Stars rating={averageRating} count={reviews.length} />
+            <Stars rating={product.rating ?? averageRating} count={reviews.length} />
 
             <div className={styles.priceBlock}>
               <span className={styles.priceSymbol}>{INR_SYMBOL}</span>

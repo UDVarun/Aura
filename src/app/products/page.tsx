@@ -13,7 +13,8 @@ import { Loader2 } from "lucide-react";
 import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
 import { ProductCard, Product } from "@/components/ui/ProductCard";
 
-const BRANDS = ["Sony", "Aura", "Logitech", "Herman Miller", "Apple"];
+// Branded categories for quick filtering
+const BRANDS_FALLBACK = ["Apple", "Logitech", "Sony", "Dell", "Aura", "Generic"];
 
 const shortNumberFormatter = new Intl.NumberFormat("en-IN");
 const formatShortCurrency = (value: number) => `${INR_SYMBOL}${shortNumberFormatter.format(value)}`;
@@ -30,13 +31,19 @@ interface ProductRow {
   id: string;
   title: string;
   price: number | string;
+  brand?: string | null;
+  tier?: "elite" | "premium" | "standard" | null;
+  rating?: number | null;
   is_featured?: boolean | null;
   image_url?: string | null;
   categories?: { name?: string | null; slug?: string | null } | null;
 }
 
-function getErrorMessage(err: unknown) {
-  return err instanceof Error ? err.message : String(err);
+function getErrorMessage(err: any) {
+  if (!err) return "Unknown error occurred";
+  if (err.message) return err.message;
+  if (typeof err === 'string') return err;
+  return JSON.stringify(err);
 }
 
 function StarRating({ rating, count }: { rating: number; count?: number }) {
@@ -76,14 +83,30 @@ function ProductsContent() {
   const [priceFilter, setPriceFilter] = useState<PriceFilterOption>("all");
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
 
-    useEffect(() => {
-      const controller = new AbortController();
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    async function fetchData() {
+      console.log("[PRODUCTS] Starting fetch...");
+      const startTime = performance.now();
       
-      async function fetchData() {
-        console.log("[PRODUCTS] Starting fetch...");
-        const startTime = performance.now();
-        
-        try {
+      // Sanity check for env vars
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      console.log("[PRODUCTS] Env Check:", {
+        urlPresent: !!supabaseUrl,
+        keyPresent: !!supabaseKey,
+        urlPrefix: supabaseUrl?.substring(0, 15),
+      });
+
+      if (!supabaseUrl || !supabaseKey) {
+        setError("Supabase configuration is missing. Check your .env.local file.");
+        setLoading(false);
+        return;
+      }
+      
+      try {
           // Set a timeout of 10 seconds for the initial fetch
           const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -112,7 +135,13 @@ function ProductsContent() {
         } catch (err: any) {
           const duration = (performance.now() - startTime).toFixed(2);
           const msg = err.name === 'AbortError' ? 'Request timed out after 10s' : getErrorMessage(err);
-          console.error(`[PRODUCTS] Error fetching products after ${duration}ms:`, err);
+          console.error(`[PRODUCTS] Detailed Error after ${duration}ms:`, {
+            error: err,
+            message: err.message,
+            code: err.code,
+            details: err.details,
+            hint: err.hint
+          });
           setError(msg);
         } finally {
           setLoading(false);
@@ -188,14 +217,24 @@ function ProductsContent() {
     router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
   };
 
+  const dynamicBrands = useMemo(() => {
+    const unique = new Set<string>();
+    products.forEach(p => {
+      if (p.brand) unique.add(p.brand);
+    });
+    // Ensure we have at least defaults if none found, or merge
+    const result = Array.from(unique);
+    return result.length > 0 ? result.sort() : BRANDS_FALLBACK;
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       // Defensive check if categories is returned as an array or object
       const categoriesData = Array.isArray(product.categories) ? product.categories[0] : product.categories;
       const productCategorySlug = categoriesData?.slug?.toLowerCase() ?? "";
       const categoryMatch = selectedCategory === "all" || productCategorySlug === selectedCategory;
-      // Note: brand is not in our SQL schema yet, using "Aura" as default for now or matching if present
-      const brandMatch = selectedBrands.length === 0 || selectedBrands.includes("Aura");
+      
+      const brandMatch = selectedBrands.length === 0 || (product.brand && selectedBrands.includes(product.brand));
 
       const price = parsePriceValue(product.price);
       const priceMatch =
@@ -204,12 +243,12 @@ function ProductsContent() {
         (priceFilter === "5000to15000" && price >= 5000 && price <= 15000) ||
         (priceFilter === "above15000" && price > 15000);
 
-      // Rating is not in schema yet, assuming 4.5 for new products
-      const qualityMatch = qualityFilter === "all" || qualityFilter === "premium";
+      const qualityMatch = qualityFilter === "all" || product.tier === qualityFilter;
 
       const searchMatch = !searchQueryFromUrl || 
         product.title.toLowerCase().includes(searchQueryFromUrl.toLowerCase()) ||
-        productCategorySlug.includes(searchQueryFromUrl.toLowerCase());
+        productCategorySlug.includes(searchQueryFromUrl.toLowerCase()) ||
+        (product.brand?.toLowerCase().includes(searchQueryFromUrl.toLowerCase()));
 
       return categoryMatch && brandMatch && priceMatch && qualityMatch && searchMatch;
     });
@@ -264,7 +303,7 @@ function ProductsContent() {
                   <div className={styles.filterGroup}>
                     <h4>Brand</h4>
                     <ul className={styles.checkboxList}>
-                      {BRANDS.map((brand) => (
+                      {dynamicBrands.map((brand) => (
                         <li key={brand}>
                           <label className={styles.checkboxLabel}>
                             <div className={clsx(styles.checkbox, { [styles.checkboxChecked]: selectedBrands.includes(brand) })}>
@@ -340,7 +379,7 @@ function ProductsContent() {
                     price: priceValue,
                     image: imageUrl,
                     category: categoryName,
-                    rating: 4.5, // Default for marketplace
+                    rating: product.rating ?? 4.5,
                     is_featured: product.is_featured ?? false
                   };
 

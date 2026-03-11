@@ -200,6 +200,9 @@ create table if not exists public.products (
 alter table public.products add column if not exists description text;
 alter table public.products add column if not exists image_url text;
 alter table public.products add column if not exists is_featured boolean not null default false;
+alter table public.products add column if not exists brand text default 'Aura';
+alter table public.products add column if not exists tier text not null default 'standard' check (tier in ('elite', 'premium', 'standard'));
+alter table public.products add column if not exists rating numeric(2,1) default 4.5;
 alter table public.products add column if not exists updated_at timestamptz not null default now();
 
 drop trigger if exists products_set_updated_at on public.products;
@@ -211,6 +214,8 @@ for each row execute function public.set_updated_at();
 create index if not exists products_category_id_idx on public.products(category_id);
 create index if not exists products_vendor_id_idx on public.products(vendor_id);
 create index if not exists products_created_at_idx on public.products(created_at desc);
+create index if not exists products_brand_idx on public.products(brand);
+create index if not exists products_tier_idx on public.products(tier);
 
 -- =====================================================
 -- 8. USER PROFILES

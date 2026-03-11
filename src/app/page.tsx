@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import styles from "./page.module.css";
 import Link from "next/link";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { parsePriceValue } from "@/lib/currency";
 import { ProductCard, Product } from "@/components/ui/ProductCard";
 import { HeroCarousel, Banner } from "@/components/ui/HeroCarousel";
 import { HorizontalScroller } from "@/components/ui/HorizontalScroller";
@@ -136,6 +138,28 @@ export default async function Home({ searchParams }: HomePageProps) {
     redirect(`/auth/callback?${callbackParams.toString()}`);
   }
 
+  // Fetch real products from DB
+  const supabase = await createServerSupabase();
+  const { data: dbProducts } = await supabase
+    .from("products")
+    .select("*, categories(name, slug)")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const products: Product[] = (dbProducts || []).map((p: any) => ({
+    id: p.id,
+    name: p.title,
+    price: parsePriceValue(p.price),
+    image: p.image_url || "https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=800&auto=format&fit=crop",
+    category: (Array.isArray(p.categories) ? p.categories[0]?.name : p.categories?.name) || "Marketplace",
+    rating: p.rating || 4.5,
+    is_featured: p.is_featured ?? false
+  }));
+
+  const featuredProducts = products.filter(p => p.is_featured);
+  const dealProducts = products.slice(0, 5);
+  const recProducts = products.slice(5, 10);
+
   return (
     <div className={styles.page}>
       {/* 1. Hero Carousel */}
@@ -147,7 +171,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           title="Deal of the Day"
           subtitle="Limited time offers on premium tech."
         >
-          {MOCK_PRODUCTS.map((product) => (
+          {(dealProducts.length > 0 ? dealProducts : featuredProducts.slice(0, 5)).map((product) => (
             <ProductCard key={`deal-${product.id}`} product={product} />
           ))}
         </HorizontalScroller>
@@ -176,7 +200,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           title="Recommended for You"
           subtitle="Based on your browsing history."
         >
-          {[...MOCK_PRODUCTS].reverse().map((product) => (
+          {(recProducts.length > 0 ? recProducts : featuredProducts.slice(0, 5)).map((product) => (
             <ProductCard key={`rec-${product.id}`} product={product} />
           ))}
         </HorizontalScroller>
