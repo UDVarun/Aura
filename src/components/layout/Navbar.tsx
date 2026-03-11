@@ -162,13 +162,13 @@ export default function Navbar() {
                                             <div className={styles.userMenuDivider} />
                                             {dashboardLink && (
                                                 <Link href={dashboardLink.href} className={styles.userMenuItem} onClick={() => setUserMenuOpen(false)}>
-                                                    <dashboardLink.Icon size={15} />
-                                                    {dashboardLink.label}
+                                                    <dashboardLink.Icon size={18} strokeWidth={2} />
+                                                    <span>{dashboardLink.label}</span>
                                                 </Link>
                                             )}
                                             <Link href="/account" className={styles.userMenuItem} onClick={() => setUserMenuOpen(false)}>
-                                                <CircleUserRound size={15} />
-                                                Profile
+                                                <User size={18} strokeWidth={2} />
+                                                <span>Profile</span>
                                             </Link>
                                             <button
                                                 type="button"
@@ -178,8 +178,8 @@ export default function Navbar() {
                                                 aria-controls="theme-settings"
                                             >
                                                 <span className={styles.settingsLabel}>
-                                                    <Settings size={15} />
-                                                    Settings
+                                                    <Settings size={18} strokeWidth={2} />
+                                                    <span>Settings</span>
                                                 </span>
                                                 <ChevronDown size={14} className={clsx(styles.settingsChevron, { [styles.settingsChevronOpen]: settingsOpen })} />
                                             </button>
@@ -205,8 +205,8 @@ export default function Navbar() {
                                             )}
                                             <div className={styles.userMenuDivider} />
                                             <button className={clsx(styles.userMenuItem, styles.logoutItem)} onClick={handleLogout}>
-                                                <LogOut size={15} />
-                                                Sign Out
+                                                <LogOut size={18} strokeWidth={2} />
+                                                <span>Sign Out</span>
                                             </button>
                                         </>
                                     ) : (

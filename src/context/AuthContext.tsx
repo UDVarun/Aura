@@ -113,10 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (!mounted) return;
 
                 if (initSession) {
-                    console.log("[AUTH] Initial session recovered:", initSession.user.email);
+                    const metaRole = initSession.user.user_metadata?.role as UserRole;
                     const cookies = document.cookie.split(";");
                     const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
-                    const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+                    const cookieRole = (roleCookie?.split("=")[1] as UserRole);
+                    
+                    const role = metaRole || cookieRole || "customer";
+                    console.log("[AUTH] Building User with role:", role, "(meta:", metaRole, "cookie:", cookieRole, ")");
                     
                     setSession(initSession);
                     setUser(buildAuthUser(initSession.user, role));
@@ -124,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     // Update role from DB in background
                     fetchRole(initSession.user.id).then(actualRole => {
                         if (mounted && actualRole !== role) {
+                            console.log("[AUTH] Role updated from DB:", actualRole);
                             setUser(prev => prev ? buildAuthUser(initSession.user, actualRole) : null);
                             document.cookie = `role=${actualRole}; path=/; max-age=31536000; SameSite=Lax`;
                         }

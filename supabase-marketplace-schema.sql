@@ -827,6 +827,12 @@ using (
 );
 
 -- =====================================================
+-- ADMIN PROMOTION (Helper)
+-- =====================================================
+-- UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}' WHERE email = 'varunud96@gmail.com';
+-- INSERT INTO public.profiles (id, email, role) SELECT id, email, 'admin' FROM auth.users WHERE email = 'varunud96@gmail.com' ON CONFLICT (id) DO UPDATE SET role = 'admin';
+
+-- =====================================================
 -- 27. VERIFY
 -- =====================================================
 select id, email, role from public.profiles order by created_at desc;
