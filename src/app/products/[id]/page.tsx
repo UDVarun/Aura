@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -76,8 +76,8 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
   );
 }
 
-export default function ProductDetailPage() {
-  const params = useParams<{ id: string }>();
+export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { addItem, openCart, isInCart } = useCart();
@@ -123,8 +123,12 @@ export default function ProductDetailPage() {
 
       const { data: productData, error } = await supabase
         .from("products")
-        .select("id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, categories(name)")
-        .eq("id", params.id)
+        .select(`
+          id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
+          categories(name),
+          product_images(url, display_order)
+        `)
+        .eq("id", id)
         .single();
 
       if (!active) return;
@@ -134,7 +138,7 @@ export default function ProductDetailPage() {
         return;
       }
 
-      setProduct(productData as ProductRecord);
+      setProduct(productData as any);
 
       if (productData.vendor_id) {
         const { data: vendor } = await supabase
@@ -148,8 +152,8 @@ export default function ProductDetailPage() {
       }
 
       const [questionRes, reviewRes] = await Promise.all([
-        fetch(`/api/product-questions?productId=${params.id}`),
-        fetch(`/api/reviews?productId=${params.id}`),
+        fetch(`/api/product-questions?productId=${id}`),
+        fetch(`/api/reviews?productId=${id}`),
       ]);
 
       const questionPayload = await questionRes.json();
@@ -164,24 +168,28 @@ export default function ProductDetailPage() {
     loadData();
 
     const subscription = supabase
-      .channel(`product-${params.id}`)
+      .channel(`product-${id}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "products",
-          filter: `id=eq.${params.id}`,
+          filter: `id=eq.${id}`,
         },
-        (payload) => {
+        () => {
           // Re-fetch to get joined category data
           supabase
             .from("products")
-            .select("id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, categories(name)")
-            .eq("id", params.id)
+            .select(`
+              id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
+              categories(name),
+              product_images(url, display_order)
+            `)
+            .eq("id", id)
             .single()
             .then(({ data }) => {
-              if (data) setProduct(data as ProductRecord);
+              if (data) setProduct(data as any);
             });
         }
       )
@@ -191,7 +199,7 @@ export default function ProductDetailPage() {
       active = false;
       supabase.removeChannel(subscription);
     };
-  }, [params.id, supabase]);
+  }, [id, supabase]);
 
   const formattedPrice = useMemo(() => {
     return formatCurrency(parsePriceValue(product?.price));
@@ -201,9 +209,26 @@ export default function ProductDetailPage() {
     ? formattedPrice.slice(INR_SYMBOL.length)
     : formattedPrice;
 
-  const imageList = !product?.image_url
-    ? ["https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=1200&auto=format&fit=crop"]
-    : [product.image_url, product.image_url, product.image_url];
+  const imageList = useMemo(() => {
+    const list: string[] = [];
+    const primaryImage = product?.image_url;
+    if (primaryImage) list.push(primaryImage);
+    
+    const extraImages = (product as any)?.product_images;
+    if (extraImages && Array.isArray(extraImages)) {
+      const sorted = [...extraImages].sort((a, b) => a.display_order - b.display_order);
+      sorted.forEach(img => {
+        if (img.url !== primaryImage) {
+          list.push(img.url);
+        }
+      });
+    }
+
+    if (list.length === 0) {
+      return ["https://images.unsplash.com/photo-1589487391730-58f20eb2c308?q=80&w=1200&auto=format&fit=crop"];
+    }
+    return list;
+  }, [product]);
 
   const averageRating = reviews.length === 0
     ? 4.7

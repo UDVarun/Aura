@@ -208,6 +208,21 @@ create index if not exists products_brand_idx on public.products(brand);
 create index if not exists products_tier_idx on public.products(tier);
 
 -- =====================================================
+-- 7.1 PRODUCT IMAGES
+-- =====================================================
+create table if not exists public.product_images (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  url text not null,
+  alt_text text,
+  display_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists product_images_product_id_idx on public.product_images(product_id);
+create index if not exists product_images_display_order_idx on public.product_images(display_order);
+
+-- =====================================================
 -- 8. USER PROFILES
 -- =====================================================
 create table if not exists public.user_profiles (
@@ -429,6 +444,7 @@ alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.product_questions enable row level security;
 alter table public.product_reviews enable row level security;
+alter table public.product_images enable row level security;
 alter table public.support_cases enable row level security;
 alter table public.support_case_messages enable row level security;
 
@@ -774,6 +790,38 @@ using (auth.uid() = vendor_id);
 
 create policy "Admins can manage all products"
 on public.products
+for all
+using (public.is_admin())
+with check (public.is_admin());
+
+-- =====================================================
+-- 25.1 PRODUCT IMAGES POLICIES
+-- =====================================================
+create policy "Anyone can view product images"
+on public.product_images
+for select
+using (true);
+
+create policy "Vendors can manage own product images"
+on public.product_images
+for all
+using (
+  exists (
+    select 1 from public.products
+    where id = product_images.product_id
+    and vendor_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.products
+    where id = product_images.product_id
+    and vendor_id = auth.uid()
+  )
+);
+
+create policy "Admins can manage all product images"
+on public.product_images
 for all
 using (public.is_admin())
 with check (public.is_admin());

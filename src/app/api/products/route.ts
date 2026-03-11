@@ -27,17 +27,36 @@ export async function POST(request: NextRequest) {
             vendor_id: role === "admin" ? payload.vendor_id ?? user.id : user.id,
         };
 
-        const { data, error } = await supabase
+        const { data: product, error } = await supabase
             .from("products")
             .insert(productPayload)
             .select("id")
             .single();
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+        if (error || !product) {
+            return NextResponse.json({ error: error?.message || "Product creation failed" }, { status: 400 });
         }
 
-        return NextResponse.json({ product: data }, { status: 201 });
+        // 2. Handle Multiple Images
+        if (payload.images && Array.isArray(payload.images) && payload.images.length > 0) {
+            const imageRecords = payload.images.map((img: any, index: number) => ({
+                product_id: product.id,
+                url: typeof img === 'string' ? img : img.url,
+                alt_text: typeof img === 'string' ? null : img.alt_text || null,
+                display_order: typeof img === 'string' ? index : img.display_order ?? index
+            }));
+
+            const { error: imgError } = await supabase
+                .from("product_images")
+                .insert(imageRecords);
+            
+            if (imgError) {
+                console.error("[API/PRODUCTS] Error inserting images:", imgError);
+                // We don't fail the whole request because the product was created
+            }
+        }
+
+        return NextResponse.json({ product }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to create product.";
         return NextResponse.json({ error: message }, { status: 500 });
@@ -82,13 +101,37 @@ export async function PATCH(request: NextRequest) {
             query = query.eq("vendor_id", user.id);
         }
 
-        const { data, error } = await query.select("id").single();
+        const { data: product, error } = await query.select("id").single();
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+        if (error || !product) {
+            return NextResponse.json({ error: error?.message || "Product update failed" }, { status: 400 });
         }
 
-        return NextResponse.json({ product: data });
+        // 2. Update Multiple Images (Delete old and insert new for simplicity in sync)
+        if (payload.images && Array.isArray(payload.images)) {
+            // Delete old images
+            await supabase
+                .from("product_images")
+                .delete()
+                .eq("product_id", product.id);
+
+            if (payload.images.length > 0) {
+                const imageRecords = payload.images.map((img: any, index: number) => ({
+                    product_id: product.id,
+                    url: typeof img === 'string' ? img : img.url,
+                    alt_text: typeof img === 'string' ? null : img.alt_text || null,
+                    display_order: typeof img === 'string' ? index : img.display_order ?? index
+                }));
+
+                const { error: imgError } = await supabase
+                    .from("product_images")
+                    .insert(imageRecords);
+                
+                if (imgError) console.error("[API/PRODUCTS] Error updating images:", imgError);
+            }
+        }
+
+        return NextResponse.json({ product });
     } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to update product.";
         return NextResponse.json({ error: message }, { status: 500 });

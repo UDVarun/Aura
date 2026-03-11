@@ -59,10 +59,11 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
     const [initialError, setInitialError] = useState<string | null>(null);
     const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
     const [categoriesError, setCategoriesError] = useState<string | null>(null);
-    const [preview, setPreview] = useState<string | null>(null);
-    const [file, setFile] = useState<File | null>(null);
-    const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
-    const [imageRemoved, setImageRemoved] = useState(false);
+    
+    // Multi-image state
+    const [images, setImages] = useState<{ id?: string, url: string, file?: File, isLocal?: boolean }[]>([]);
+    const [imageUrlInput, setImageUrlInput] = useState("");
+    
     const [vendorId, setVendorId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -105,7 +106,7 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
             try {
                 const { data, error } = await supabase
                     .from("products")
-                    .select("title, description, price, stock_quantity, category_id, is_featured, image_url, vendor_id")
+                    .select("title, description, price, stock_quantity, category_id, is_featured, image_url, vendor_id, product_images(id, url, display_order)")
                     .eq("id", productId)
                     .single();
 
@@ -121,10 +122,27 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
                     categoryId: data.category_id ?? "",
                     isFeatured: Boolean(data.is_featured),
                 });
-                setExistingImageUrl(data.image_url ?? null);
-                setPreview(data.image_url ?? null);
+                
+                // Load images: main image_url first, then product_images
+                const loadedImages = [];
+                if (data.image_url) {
+                    loadedImages.push({ url: data.image_url });
+                }
+                
+                if (data.product_images && (data.product_images as any[]).length > 0) {
+                    const extraImages = (data.product_images as any[])
+                        .sort((a, b) => a.display_order - b.display_order)
+                        .map(img => ({ id: img.id, url: img.url }));
+                    
+                    // Filter out duplicate main image if it exists in product_images too
+                    const mainUrl = data.image_url;
+                    extraImages.forEach(img => {
+                        if (img.url !== mainUrl) loadedImages.push(img);
+                    });
+                }
+                
+                setImages(loadedImages);
                 setVendorId(data.vendor_id ?? null);
-                setImageRemoved(false);
             } catch (err) {
                 if (active) setInitialError(getErrorMessage(err) || "Failed to load product");
             } finally {
@@ -140,20 +158,25 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
     }, [productId, supabase]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-            setPreview(URL.createObjectURL(selectedFile));
-            setExistingImageUrl(null);
-            setImageRemoved(false);
+        const selectedFiles = e.target.files;
+        if (selectedFiles && selectedFiles.length > 0) {
+            const newImages = Array.from(selectedFiles).map(file => ({
+                url: URL.createObjectURL(file),
+                file,
+                isLocal: true
+            }));
+            setImages(prev => [...prev, ...newImages]);
         }
     };
 
-    const removeImage = () => {
-        setFile(null);
-        setPreview(null);
-        setExistingImageUrl(null);
-        setImageRemoved(true);
+    const addImageUrl = () => {
+        if (!imageUrlInput.trim()) return;
+        setImages(prev => [...prev, { url: imageUrlInput.trim() }]);
+        setImageUrlInput("");
+    };
+
+    const removeImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -162,13 +185,14 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
         setError(null);
 
         try {
-            let imageUrl = existingImageUrl;
-
-            if (file) {
-                try {
-                    setUploading(true);
+            // 1. Process all images
+            const finalImageUrls: string[] = [];
+            
+            setUploading(true);
+            for (const img of images) {
+                if (img.isLocal && img.file) {
                     const formData = new FormData();
-                    formData.append("file", file);
+                    formData.append("file", img.file);
 
                     const uploadData = await withTimeout(
                         fetch("/api/upload", {
@@ -182,16 +206,12 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
                         "Image upload timed out. Please try again."
                     );
                     if (!uploadData.ok) throw new Error(uploadData.data.error || "Upload failed");
-                    imageUrl = uploadData.data.url;
-                    setExistingImageUrl(imageUrl);
-                    setPreview(imageUrl);
-                    setImageRemoved(false);
-                } finally {
-                    setUploading(false);
+                    finalImageUrls.push(uploadData.data.url);
+                } else {
+                    finalImageUrls.push(img.url);
                 }
-            } else if (imageRemoved) {
-                imageUrl = null;
             }
+            setUploading(false);
 
             const payload = {
                 title: form.title,
@@ -199,7 +219,8 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
                 price: parseFloat(form.price),
                 stock_quantity: parseInt(form.stock, 10),
                 category_id: form.categoryId || null,
-                image_url: imageUrl,
+                image_url: finalImageUrls.length > 0 ? finalImageUrls[0] : null,
+                images: finalImageUrls, // Send full array to batch upsert
                 is_featured: form.isFeatured,
             };
 
@@ -247,6 +268,7 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
             setError(getErrorMessage(err) || "Something went wrong");
         } finally {
             setLoading(false);
+            setUploading(false);
         }
     };
 
@@ -326,29 +348,47 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
 
                     <div className={styles.sideCol}>
                         <div className={styles.card}>
-                            <h2 className={styles.cardTitle}>Product Image</h2>
-                            <div className={styles.imageUpload}>
-                                {preview ? (
-                                    <div className={styles.previewContainer}>
-                                        <Image src={preview} alt="Preview" fill className={styles.previewImg} unoptimized />
-                                        <button type="button" onClick={removeImage} className={styles.removeBtn}>
-                                            <X size={16} />
-                                        </button>
+                            <h2 className={styles.cardTitle}>Product Gallery</h2>
+                            
+                            <div className={styles.imageList}>
+                                {images.map((img, idx) => (
+                                    <div key={idx} className={styles.imageItem}>
+                                        <div className={styles.imagePreview}>
+                                            <Image src={img.url} alt={`Preview ${idx}`} fill className={styles.previewImg} unoptimized />
+                                            <button type="button" onClick={() => removeImage(idx)} className={styles.removeBtn}>
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                        {idx === 0 && <span className={styles.mainBadge}>Cover</span>}
                                     </div>
-                                ) : (
-                                    <label className={styles.uploadPlaceholder}>
-                                        <Upload size={32} />
-                                        <span>Click to upload image</span>
-                                        <input
-                                            type="file"
-                                            className={styles.hiddenInput}
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                        />
-                                    </label>
-                                )}
+                                ))}
+                                
+                                <label className={styles.addCard}>
+                                    <Upload size={20} />
+                                    <span>Upload</span>
+                                    <input
+                                        type="file"
+                                        className={styles.hiddenInput}
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleFileChange}
+                                    />
+                                </label>
                             </div>
-                            <p className={styles.helpText}>Supported formats: JPG, PNG, WebP. Max 5MB.</p>
+
+                            <div className={styles.urlInputGroup}>
+                                <input 
+                                    type="text" 
+                                    className="input" 
+                                    placeholder="Paste external image URL..." 
+                                    value={imageUrlInput}
+                                    onChange={(e) => setImageUrlInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
+                                />
+                                <button type="button" onClick={addImageUrl} className="btn">Add</button>
+                            </div>
+                            
+                            <p className={styles.helpText}>Drag and drop or upload multiple files. You can also paste external links.</p>
                         </div>
 
                         <div className={styles.card}>
@@ -405,7 +445,7 @@ export default function ProductForm({ backPath, onSuccessPath, productId }: Prod
                             {loading ? (
                                 <>
                                     <Loader2 className="animate-spin" size={18} />
-                                    {uploading ? "Uploading Image..." : isEditing ? "Updating..." : "Saving..."}
+                                    {uploading ? "Uploading Images..." : isEditing ? "Updating..." : "Saving..."}
                                 </>
                             ) : isEditing ? "Save Changes" : "Publish Product"}
                         </button>
