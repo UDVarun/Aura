@@ -30,7 +30,13 @@ export default function Navbar() {
     const { unreadCount } = useNotifications();
     const router = useRouter();
     const pathname = usePathname();
+    const [searchQuery, setSearchQuery] = useState("");
     const userMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const query = new URLSearchParams(window.location.search).get("q");
+        if (query) setSearchQuery(query);
+    }, [pathname]);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -61,6 +67,16 @@ export default function Navbar() {
         document.body.style.overflow = mobileOpen ? "hidden" : "";
         return () => { document.body.style.overflow = ""; };
     }, [mobileOpen]);
+
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = searchQuery.trim();
+        if (trimmed) {
+            router.push(`/products?q=${encodeURIComponent(trimmed)}`);
+        } else if (pathname === "/products") {
+            router.push("/products");
+        }
+    };
 
     const handleLogout = async () => {
         setUserMenuOpen(false);
@@ -109,16 +125,18 @@ export default function Navbar() {
                     </nav>
 
                     {/* Center: Global Search Bar */}
-                    <div className={styles.globalSearch}>
+                    <form className={styles.globalSearch} onSubmit={handleSearch}>
                         <div className={styles.searchBox}>
                             <Search size={16} className={styles.searchIcon} />
                             <input
                                 type="text"
                                 placeholder="Search products, brands and more..."
                                 className={styles.searchInput}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                    </div>
+                    </form>
 
                     {/* Right: Actions */}
                     <div className={styles.actions}>
@@ -228,11 +246,16 @@ export default function Navbar() {
                 aria-hidden={!mobileOpen}
             >
                 <div className={styles.mobileNavContent}>
-                    {/* Mobile Search */}
-                    <div className={styles.mobileSearch}>
+                    <form className={styles.mobileSearch} onSubmit={handleSearch}>
                         <Search size={16} className={styles.searchIcon} />
-                        <input type="text" placeholder="Search..." className={styles.mobileSearchInput} />
-                    </div>
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            className={styles.mobileSearchInput}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </form>
                     <div className={styles.mobileNavDivider} />
 
                     {CUSTOMER_NAV.map(({ href, label }) => (

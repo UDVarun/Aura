@@ -76,7 +76,7 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { addItem, openCart, isInCart } = useCart();
   const { isAuthenticated } = useAuth();
 

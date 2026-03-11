@@ -59,12 +59,14 @@ function StarRating({ rating, count }: { rating: number; count?: number }) {
 
 function ProductsContent() {
   const { addItem, openCart, isInCart } = useCart();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const selectedCategory = searchParams.get("category")?.toLowerCase() || "all";
+  const searchQueryFromUrl = searchParams.get("q") || "";
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,28 +75,45 @@ function ProductsContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [priceFilter, setPriceFilter] = useState<PriceFilterOption>("all");
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
-  const selectedCategory = searchParams.get("category")?.toLowerCase() ?? "all";
 
     useEffect(() => {
+      const controller = new AbortController();
+      
       async function fetchData() {
+        console.log("[PRODUCTS] Starting fetch...");
+        const startTime = performance.now();
+        
         try {
+          // Set a timeout of 10 seconds for the initial fetch
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+
           const [{ data: productData, error: productError }, { data: categoryData, error: categoryError }] = await Promise.all([
             supabase
               .from("products")
-              .select("*, categories(name, slug)"),
+              .select("*, categories(name, slug)")
+              .abortSignal(controller.signal),
             supabase
               .from("categories")
               .select("id, name, slug")
-              .order("name"),
+              .order("name")
+              .abortSignal(controller.signal),
           ]);
+
+          clearTimeout(timeoutId);
 
           if (productError) throw productError;
           if (categoryError) throw categoryError;
+          
+          const duration = (performance.now() - startTime).toFixed(2);
+          console.log(`[PRODUCTS] Successfully fetched ${productData?.length} products and ${categoryData?.length} categories in ${duration}ms.`);
+          
           setProducts(productData || []);
           setCategories(categoryData || []);
-        } catch (err) {
-          console.error("Error fetching products:", err);
-          setError(getErrorMessage(err));
+        } catch (err: any) {
+          const duration = (performance.now() - startTime).toFixed(2);
+          const msg = err.name === 'AbortError' ? 'Request timed out after 10s' : getErrorMessage(err);
+          console.error(`[PRODUCTS] Error fetching products after ${duration}ms:`, err);
+          setError(msg);
         } finally {
           setLoading(false);
         }
@@ -130,7 +149,16 @@ function ProductsContent() {
                       prev.map((p) => (p.id === data.id ? data : p))
                     );
                   } else {
-                    console.error("Failed to re-fetch product for real-time update:", error);
+                    if (error) {
+                      console.error("Failed to re-fetch product for real-time update. Full Error:", {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                      });
+                    } else {
+                      console.error("Failed to re-fetch product for real-time update: No data and no explicit error object.");
+                    }
                   }
                 });
             } else if (payload.eventType === "DELETE") {
@@ -141,6 +169,7 @@ function ProductsContent() {
         .subscribe();
 
       return () => {
+        controller.abort();
         supabase.removeChannel(subscription);
       };
     }, [supabase]);
@@ -178,9 +207,13 @@ function ProductsContent() {
       // Rating is not in schema yet, assuming 4.5 for new products
       const qualityMatch = qualityFilter === "all" || qualityFilter === "premium";
 
-      return categoryMatch && brandMatch && priceMatch && qualityMatch;
+      const searchMatch = !searchQueryFromUrl || 
+        product.title.toLowerCase().includes(searchQueryFromUrl.toLowerCase()) ||
+        productCategorySlug.includes(searchQueryFromUrl.toLowerCase());
+
+      return categoryMatch && brandMatch && priceMatch && qualityMatch && searchMatch;
     });
-  }, [products, selectedCategory, selectedBrands, priceFilter, qualityFilter]);
+  }, [products, selectedCategory, selectedBrands, priceFilter, qualityFilter, searchQueryFromUrl]);
 
   return (
     <div className={styles.page}>
@@ -280,8 +313,14 @@ function ProductsContent() {
               </div>
             ) : error ? (
               <div className={styles.errorWrap}>
-                <p>Error: {error}</p>
-                <button onClick={() => window.location.reload()} className="btn btn-primary">Retry</button>
+                <p>{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="btn btn-primary"
+                  style={{ marginTop: '1rem' }}
+                >
+                  Retry Loading
+                </button>
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className={styles.emptyWrap}>

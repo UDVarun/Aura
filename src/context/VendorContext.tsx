@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthContext";
 
@@ -44,7 +44,7 @@ const VendorContext = createContext<VendorContextType | undefined>(undefined);
 
 export function VendorProvider({ children }: { children: React.ReactNode }) {
     const { user, isAuthenticated } = useAuth();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     const [orders, setOrders] = useState<VendorOrder[]>([]);
     const [products, setProducts] = useState<VendorProduct[]>([]);

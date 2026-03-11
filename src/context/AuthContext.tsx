@@ -9,7 +9,7 @@ import React, {
     useMemo,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type UserRole = "customer" | "admin" | "vendor";
@@ -95,9 +95,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Get the initial session
         const init = async () => {
+            console.log("[AUTH] init() started. Checking session...");
             const {
                 data: { session: initialSession },
+                error: sessionError
             } = await supabase.auth.getSession();
+
+            if (sessionError) {
+                console.error("[AUTH] Error getting initial session:", sessionError);
+            }
 
             if (initialSession?.user) {
                 // Try to get role from cookie synchronously to prevent UI blocking
@@ -106,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
 
                 // Set user immediately with cached/default role so UI renders instantly
+                console.log(`[AUTH] Initial session found for user: ${initialSession.user.email}. Role from cookie: ${role}`);
                 setUser(buildAuthUser(initialSession.user, role));
                 setSession(initialSession);
                 setIsLoading(false);
@@ -113,10 +120,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Fetch actual role in background to ensure it's up-to-date
                 const actualRole = await fetchRole(initialSession.user.id);
                 if (actualRole !== role) {
+                    console.log(`[AUTH] Role mismatch. Cookie: ${role}, DB: ${actualRole}. Updating.`);
                     setUser(buildAuthUser(initialSession.user, actualRole));
-                    document.cookie = `role=${actualRole}; path=/; SameSite=Strict`;
+                    document.cookie = `role=${actualRole}; path=/; SameSite=Lax`;
                 }
             } else {
+                console.log("[AUTH] No initial session found by getSession(). User is guest.");
                 setIsLoading(false);
             }
         };
@@ -126,25 +135,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Listen for auth events (login, logout, OAuth callback, token refresh)
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, newSession: Session | null) => {
             if (newSession?.user) {
                 // Read from cookie first
                 const cookies = document.cookie.split(";");
                 const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
                 const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
 
+                console.log(`[AUTH] State change: ${event}. Session user: ${newSession.user.email}. Role from cookie: ${role}`);
                 setUser(buildAuthUser(newSession.user, role));
                 setSession(newSession);
 
                 const actualRole = await fetchRole(newSession.user.id);
                 if (actualRole !== role) {
+                    console.log(`[AUTH] Role updated on state change. ${role} -> ${actualRole}`);
                     setUser(buildAuthUser(newSession.user, actualRole));
-                    document.cookie = `role=${actualRole}; path=/; SameSite=Strict`;
+                    document.cookie = `role=${actualRole}; path=/; SameSite=Lax`;
                 }
             } else {
+                console.log(`[AUTH] State change: ${event}. No user session.`);
                 setUser(null);
                 setSession(null);
-                document.cookie = "role=; path=/; max-age=0; SameSite=Strict";
+                // Only clear if it wasn't a transient state change
+                if (event === "SIGNED_OUT") {
+                    document.cookie = "role=; path=/; max-age=0; SameSite=Lax";
+                }
             }
             setIsLoading(false);
         });
@@ -229,21 +244,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const finalRole = role === "vendor" ? "vendor" : "customer";
                 console.log(`[AUTH] User created (${data.user.id}). Attempting client-side profile upsert for role: ${finalRole}`);
                 
-                // This upsert might fail if email confirmation is ON (user not yet session-authenticated)
-                // but the DB trigger 'handle_new_user' will catch the metadata above.
                 try {
                     const { error: upsertError } = await supabase.from("profiles").upsert({
                         id: data.user.id,
                         email: data.user.email ?? email.trim().toLowerCase(),
                         role: finalRole,
                     });
-                    if (upsertError) console.warn("[AUTH] Client-side profile upsert skipped (expected if email confirmation is ON):", upsertError.message);
+                    if (upsertError) console.warn("[AUTH] Client-side profile upsert skipped:", upsertError.message);
                 } catch (e) {
                     console.warn("[AUTH] Client-side profile upsert ignored.");
                 }
             }
 
-            // sessionCreated = true means email confirmation is OFF → user is already logged in
             return { success: true, sessionCreated: !!data.session };
         },
         [supabase]
@@ -271,7 +283,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         setUser(null);
         setSession(null);
-        document.cookie = "role=; path=/; max-age=0; SameSite=Strict";
+        document.cookie = "role=; path=/; max-age=0; SameSite=Lax";
     }, [supabase]);
 
     return (

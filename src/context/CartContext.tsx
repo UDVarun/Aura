@@ -44,41 +44,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const ensureCart = useCallback(async () => {
-    if (!user) return null;
-
-    const { data: existingCart, error: existingCartError } = await supabase
-      .from("carts")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (existingCartError) {
-      console.warn("Cart container unavailable, continuing with account-linked cart items.");
-      return null;
-    }
-
-    if (existingCart?.id) {
-      return existingCart.id as string;
-    }
-
-    const { data, error } = await supabase
-      .from("carts")
-      .insert({
-        user_id: user.id,
-        status: "active",
-        updated_at: new Date().toISOString(),
-      })
-      .select("id")
-      .maybeSingle();
-
-    if (error) {
-      console.warn("Cart container could not be created, continuing with account-linked cart items.");
-      return null;
-    }
-
-    return data?.id ?? null;
-  }, [supabase, user]);
 
   const fetchCart = useCallback(async () => {
     if (!user) return;
@@ -117,8 +82,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    void ensureCart().then(() => fetchCart());
-  }, [authLoading, ensureCart, fetchCart, isAuthenticated, user]);
+    void fetchCart();
+  }, [authLoading, fetchCart, isAuthenticated, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -140,7 +105,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addItem = useCallback(
     async (input: AddCartItemInput) => {
       if (!isAuthenticated || !user) {
-        // Enforce cart restriction to logged-in users and redirect to login
+        console.warn("[CART] addItem blocked: user not authenticated.", { isAuthenticated, userId: user?.id });
         router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
         return;
       }
@@ -148,7 +113,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const qty = Math.max(1, input.quantity ?? 1);
       const existingItem = items.find((p) => p.id === input.id);
       const newTotalQty = existingItem ? existingItem.quantity + qty : qty;
-      const cartId = await ensureCart();
 
       // Optimistic UI update
       setItems((prev) => {
@@ -163,11 +127,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setIsOpen(true);
 
       // Persist to secure DB cart (Row Level Security protected)
+      console.log(`[CART] Attempting DB upsert for product ${input.id}. User: ${user.id}`);
       const { error } = await supabase
         .from("cart_items")
         .upsert(
           {
-            cart_id: cartId,
             user_id: user.id,
             product_id: input.id,
             product_name: input.name,
@@ -178,15 +142,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             updated_at: new Date().toISOString(),
           },
           {
-            onConflict: "user_id, product_id",
+            onConflict: "user_id,product_id",
           }
         );
 
       if (error) {
-        console.error("Failed to add item to DB cart:", error);
+        console.error("[CART] Failed to add item to DB cart. Detailed Error:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          full_error: error
+        });
+      } else {
+        console.log("[CART] Successfully persisted item to DB.");
       }
     },
-    [user, isAuthenticated, items, supabase, router, pathname, ensureCart]
+    [user, isAuthenticated, items, supabase, router, pathname]
   );
 
   const removeItem = useCallback(

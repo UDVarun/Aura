@@ -1,7 +1,11 @@
 -- =====================================================
 -- AURA MARKETPLACE DATABASE SETUP
--- profiles + vendors + categories + products + storage
+-- Full updated schema with safe reruns, auth profile sync,
+-- non-recursive admin RLS, vendor workflows, orders,
+-- support cases, reviews, and storage.
 -- =====================================================
+
+create extension if not exists pgcrypto;
 
 -- =====================================================
 -- 1. PROFILES
@@ -17,6 +21,9 @@ alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists role text not null default 'customer';
 alter table public.profiles add column if not exists created_at timestamptz not null default now();
 
+-- =====================================================
+-- 2. AUTH -> PROFILE SYNC
+-- =====================================================
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -43,6 +50,7 @@ after insert on auth.users
 for each row
 execute function public.handle_new_user();
 
+-- Backfill any missing profiles for already-created auth users
 insert into public.profiles (id, email, role)
 select
   u.id,
@@ -53,6 +61,20 @@ left join public.profiles p on p.id = u.id
 where p.id is null
 on conflict (id) do nothing;
 
+-- Promote your account to admin
+insert into public.profiles (id, email, role)
+values (
+  '6fe718bf-aba8-49b4-aa6b-df9e26db2a5e',
+  'varunud96@gmail.com',
+  'admin'
+)
+on conflict (id) do update
+set email = excluded.email,
+    role = 'admin';
+
+-- =====================================================
+-- 3. ADMIN HELPER
+-- =====================================================
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -71,19 +93,21 @@ $$;
 revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
--- promote your current account to admin
-insert into public.profiles (id, email, role)
-values (
-  '6fe718bf-aba8-49b4-aa6b-df9e26db2a5e',
-  'varunud96@gmail.com',
-  'admin'
-)
-on conflict (id) do update
-set email = excluded.email,
-    role = 'admin';
+-- =====================================================
+-- 4. UPDATED_AT TRIGGER FUNCTION
+-- =====================================================
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 -- =====================================================
--- 2. VENDORS
+-- 5. VENDORS
 -- =====================================================
 create table if not exists public.vendors (
   id uuid primary key default gen_random_uuid(),
@@ -104,6 +128,9 @@ create table if not exists public.vendors (
   constraint vendors_status_check check (status in ('pending', 'approved', 'rejected', 'suspended'))
 );
 
+alter table public.vendors add column if not exists store_description text;
+alter table public.vendors add column if not exists phone text;
+alter table public.vendors add column if not exists address text;
 alter table public.vendors add column if not exists business_category text;
 alter table public.vendors add column if not exists government_id text;
 alter table public.vendors add column if not exists gst_number text;
@@ -115,9 +142,7 @@ alter table public.vendors add column if not exists updated_at timestamptz not n
 do $$
 begin
   if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'vendors_reviewed_by_fkey'
+    select 1 from pg_constraint where conname = 'vendors_reviewed_by_fkey'
   ) then
     alter table public.vendors
       add constraint vendors_reviewed_by_fkey
@@ -128,8 +153,13 @@ end $$;
 create unique index if not exists vendors_user_id_key
 on public.vendors(user_id);
 
+drop trigger if exists vendors_set_updated_at on public.vendors;
+create trigger vendors_set_updated_at
+before update on public.vendors
+for each row execute function public.set_updated_at();
+
 -- =====================================================
--- 3. CATEGORIES
+-- 6. CATEGORIES
 -- =====================================================
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -151,7 +181,7 @@ values
 on conflict (name) do nothing;
 
 -- =====================================================
--- 4. PRODUCTS
+-- 7. PRODUCTS
 -- =====================================================
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -167,30 +197,23 @@ create table if not exists public.products (
   updated_at timestamptz not null default now()
 );
 
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
+alter table public.products add column if not exists description text;
+alter table public.products add column if not exists image_url text;
+alter table public.products add column if not exists is_featured boolean not null default false;
+alter table public.products add column if not exists updated_at timestamptz not null default now();
 
 drop trigger if exists products_set_updated_at on public.products;
 create trigger products_set_updated_at
 before update on public.products
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
-drop trigger if exists vendors_set_updated_at on public.vendors;
-create trigger vendors_set_updated_at
-before update on public.vendors
-for each row
-execute function public.set_updated_at();
+-- Performance indexes for products
+create index if not exists products_category_id_idx on public.products(category_id);
+create index if not exists products_vendor_id_idx on public.products(vendor_id);
+create index if not exists products_created_at_idx on public.products(created_at desc);
 
 -- =====================================================
--- 5. CUSTOMER PROFILES
+-- 8. USER PROFILES
 -- =====================================================
 create table if not exists public.user_profiles (
   user_id uuid primary key references public.profiles(id) on delete cascade,
@@ -210,60 +233,12 @@ create table if not exists public.user_profiles (
 drop trigger if exists user_profiles_set_updated_at on public.user_profiles;
 create trigger user_profiles_set_updated_at
 before update on public.user_profiles
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 -- =====================================================
--- 6. USER ADDRESSES
--- =====================================================
-create table if not exists public.user_addresses (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  label text not null default 'Home',
-  recipient_name text not null,
-  phone text,
-  line1 text not null,
-  line2 text,
-  city text not null,
-  state text not null,
-  postal_code text not null,
-  country text not null default 'India',
-  is_default boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists user_addresses_user_id_idx on public.user_addresses(user_id);
-
-drop trigger if exists user_addresses_set_updated_at on public.user_addresses;
-create trigger user_addresses_set_updated_at
-before update on public.user_addresses
-for each row
-execute function public.set_updated_at();
-
--- =====================================================
--- 7. CARTS
--- =====================================================
-create table if not exists public.carts (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references public.profiles(id) on delete cascade,
-  status text not null default 'active',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint carts_status_check check (status in ('active', 'converted', 'abandoned'))
-);
-
-drop trigger if exists carts_set_updated_at on public.carts;
-create trigger carts_set_updated_at
-before update on public.carts
-for each row
-execute function public.set_updated_at();
-
--- =====================================================
--- 8. CART
+-- 9. CART
 -- =====================================================
 create table if not exists public.cart_items (
-  cart_id uuid references public.carts(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   product_id uuid not null references public.products(id) on delete cascade,
   product_name text not null,
@@ -276,37 +251,10 @@ create table if not exists public.cart_items (
   primary key (user_id, product_id)
 );
 
-alter table public.cart_items add column if not exists cart_id uuid;
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'cart_items_cart_id_fkey'
-  ) then
-    alter table public.cart_items
-      add constraint cart_items_cart_id_fkey
-      foreign key (cart_id) references public.carts(id) on delete cascade;
-  end if;
-end $$;
-
 drop trigger if exists cart_items_set_updated_at on public.cart_items;
 create trigger cart_items_set_updated_at
 before update on public.cart_items
-for each row
-execute function public.set_updated_at();
-
--- =====================================================
--- 9. WISHLISTS
--- =====================================================
-create table if not exists public.wishlists (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  product_id uuid not null references public.products(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique (user_id, product_id)
-);
-
-create index if not exists wishlists_user_id_idx on public.wishlists(user_id);
+for each row execute function public.set_updated_at();
 
 -- =====================================================
 -- 10. ORDERS
@@ -335,8 +283,7 @@ create table if not exists public.orders (
 drop trigger if exists orders_set_updated_at on public.orders;
 create trigger orders_set_updated_at
 before update on public.orders
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
@@ -367,11 +314,10 @@ create index if not exists order_items_customer_id_idx on public.order_items(cus
 drop trigger if exists order_items_set_updated_at on public.order_items;
 create trigger order_items_set_updated_at
 before update on public.order_items
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 -- =====================================================
--- 8. PRODUCT QUESTIONS AND REVIEWS
+-- 11. PRODUCT QUESTIONS
 -- =====================================================
 create table if not exists public.product_questions (
   id uuid primary key default gen_random_uuid(),
@@ -394,9 +340,11 @@ create index if not exists product_questions_vendor_id_idx on public.product_que
 drop trigger if exists product_questions_set_updated_at on public.product_questions;
 create trigger product_questions_set_updated_at
 before update on public.product_questions
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
+-- =====================================================
+-- 12. PRODUCT REVIEWS
+-- =====================================================
 create table if not exists public.product_reviews (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
@@ -416,11 +364,10 @@ create index if not exists product_reviews_product_id_idx on public.product_revi
 drop trigger if exists product_reviews_set_updated_at on public.product_reviews;
 create trigger product_reviews_set_updated_at
 before update on public.product_reviews
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 -- =====================================================
--- 9. SUPPORT CASES
+-- 13. SUPPORT CASES
 -- =====================================================
 create table if not exists public.support_cases (
   id uuid primary key default gen_random_uuid(),
@@ -451,8 +398,7 @@ create index if not exists support_cases_status_idx on public.support_cases(stat
 drop trigger if exists support_cases_set_updated_at on public.support_cases;
 create trigger support_cases_set_updated_at
 before update on public.support_cases
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 create table if not exists public.support_case_messages (
   id uuid primary key default gen_random_uuid(),
@@ -468,7 +414,7 @@ create table if not exists public.support_case_messages (
 create index if not exists support_case_messages_case_id_idx on public.support_case_messages(case_id);
 
 -- =====================================================
--- 10. STORAGE BUCKET
+-- 14. STORAGE BUCKET
 -- =====================================================
 insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
@@ -476,15 +422,12 @@ on conflict (id) do update
 set public = true;
 
 -- =====================================================
--- 11. ENABLE RLS
+-- 15. ENABLE RLS
 -- =====================================================
 alter table public.profiles enable row level security;
 alter table public.vendors enable row level security;
 alter table public.user_profiles enable row level security;
-alter table public.user_addresses enable row level security;
-alter table public.carts enable row level security;
 alter table public.cart_items enable row level security;
-alter table public.wishlists enable row level security;
 alter table public.categories enable row level security;
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
@@ -495,7 +438,7 @@ alter table public.support_cases enable row level security;
 alter table public.support_case_messages enable row level security;
 
 -- =====================================================
--- 12. DROP OLD POLICIES IF EXISTS
+-- 16. DROP OLD POLICIES
 -- =====================================================
 drop policy if exists "Users can view own profile" on public.profiles;
 drop policy if exists "Users can insert own profile" on public.profiles;
@@ -511,13 +454,8 @@ drop policy if exists "Admins can update all vendors" on public.vendors;
 
 drop policy if exists "Users can view own profile details" on public.user_profiles;
 drop policy if exists "Users can manage own profile details" on public.user_profiles;
-drop policy if exists "Users can view own addresses" on public.user_addresses;
-drop policy if exists "Users can manage own addresses" on public.user_addresses;
 
-drop policy if exists "Users can view own cart" on public.carts;
-drop policy if exists "Users can manage own cart container" on public.carts;
 drop policy if exists "Users can manage own cart" on public.cart_items;
-drop policy if exists "Users can manage own wishlist" on public.wishlists;
 
 drop policy if exists "Customers can view own orders" on public.orders;
 drop policy if exists "Customers can insert own orders" on public.orders;
@@ -560,7 +498,7 @@ drop policy if exists "Authenticated users can update product images" on storage
 drop policy if exists "Authenticated users can delete product images" on storage.objects;
 
 -- =====================================================
--- 13. PROFILES POLICIES
+-- 17. PROFILES POLICIES
 -- =====================================================
 create policy "Users can view own profile"
 on public.profiles
@@ -590,7 +528,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 14. VENDORS POLICIES
+-- 18. VENDORS POLICIES
 -- =====================================================
 create policy "Users can view own vendor record"
 on public.vendors
@@ -620,7 +558,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 15. USER PROFILE POLICIES
+-- 19. USER PROFILE POLICIES
 -- =====================================================
 create policy "Users can view own profile details"
 on public.user_profiles
@@ -634,33 +572,8 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 -- =====================================================
--- 16. ADDRESS POLICIES
+-- 20. CART POLICIES
 -- =====================================================
-create policy "Users can view own addresses"
-on public.user_addresses
-for select
-using (auth.uid() = user_id);
-
-create policy "Users can manage own addresses"
-on public.user_addresses
-for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
--- =====================================================
--- 17. CART POLICIES
--- =====================================================
-create policy "Users can view own cart"
-on public.carts
-for select
-using (auth.uid() = user_id);
-
-create policy "Users can manage own cart container"
-on public.carts
-for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
 create policy "Users can manage own cart"
 on public.cart_items
 for all
@@ -668,16 +581,7 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 -- =====================================================
--- 18. WISHLIST POLICIES
--- =====================================================
-create policy "Users can manage own wishlist"
-on public.wishlists
-for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
--- =====================================================
--- 19. ORDER POLICIES
+-- 21. ORDER POLICIES
 -- =====================================================
 create policy "Customers can view own orders"
 on public.orders
@@ -728,7 +632,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 18. PRODUCT QUESTION AND REVIEW POLICIES
+-- 22. PRODUCT QUESTIONS / REVIEWS POLICIES
 -- =====================================================
 create policy "Anyone can view questions"
 on public.product_questions
@@ -770,7 +674,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 19. SUPPORT CASE POLICIES
+-- 23. SUPPORT CASE POLICIES
 -- =====================================================
 create policy "Participants can view support cases"
 on public.support_cases
@@ -837,7 +741,7 @@ with check (
 );
 
 -- =====================================================
--- 20. CATEGORIES POLICIES
+-- 24. CATEGORY POLICIES
 -- =====================================================
 create policy "Anyone can view categories"
 on public.categories
@@ -851,7 +755,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 21. PRODUCTS POLICIES
+-- 25. PRODUCT POLICIES
 -- =====================================================
 create policy "Anyone can view products"
 on public.products
@@ -881,7 +785,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 -- =====================================================
--- 22. STORAGE POLICIES
+-- 26. STORAGE POLICIES
 -- =====================================================
 create policy "Public can view product images"
 on storage.objects
@@ -917,57 +821,10 @@ using (
 );
 
 -- =====================================================
--- 23. VERIFY
+-- 27. VERIFY
 -- =====================================================
-select id, email, role from public.profiles;
+select id, email, role from public.profiles order by created_at desc;
+select id, user_id, store_name, business_category, status from public.vendors order by created_at desc;
+select id, title, vendor_id, category_id from public.products order by created_at desc;
 select id, name, slug from public.categories order by name;
-select id, name, public from storage.buckets where id = 'product-images';-- =====================================================
--- 20. NOTIFICATIONS
--- =====================================================
-create table if not exists public.notifications (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  title text not null,
-  message text not null,
-  type text not null default 'info',
-  is_read boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
-alter table public.notifications enable row level security;
-
-create policy "Users can manage own notifications"
-on public.notifications
-for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
--- =====================================================
--- 21. PAYMENT METHODS
--- =====================================================
-create table if not exists public.user_payment_methods (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  type text not null, -- card, upi, wallet
-  provider text,      -- Visa, Mastercard, GooglePay
-  last4 text,         -- for cards
-  upi_id text,
-  is_default boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
-alter table public.user_payment_methods enable row level security;
-
-create policy "Users can manage own payment methods"
-on public.user_payment_methods
-for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
--- Enable Realtime for new tables
-alter publication supabase_realtime add table public.notifications;
-alter publication supabase_realtime add table public.user_payment_methods;
-alter publication supabase_realtime add table public.orders;
-alter publication supabase_realtime add table public.order_items;
-alter publication supabase_realtime add table public.products;
-alter publication supabase_realtime add table public.cart_items;
+select id, name, public from storage.buckets where id = 'product-images';
