@@ -81,12 +81,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Fetch the user's role from the user_roles table
     const fetchRole = useCallback(
         async (userId: string): Promise<UserRole> => {
-            const { data } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", userId)
-                .single();
-            return (data?.role as UserRole) ?? "customer";
+            try {
+                // Add a timeout to prevent RLS recursion hangs
+                const rolePromise = supabase
+                    .from("profiles")
+                    .select("role")
+                    .eq("id", userId)
+                    .single();
+
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Role fetch timeout")), 5000)
+                );
+
+                const { data } = (await Promise.race([rolePromise, timeoutPromise])) as any;
+                return (data?.role as UserRole) ?? "customer";
+            } catch (err) {
+                console.warn("[AUTH] fetchRole failed or timed out:", err);
+                return "customer"; // Fallback to customer on hang/error
+            }
         },
         [supabase]
     );

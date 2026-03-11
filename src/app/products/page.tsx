@@ -84,31 +84,19 @@ function ProductsContent() {
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
 
   useEffect(() => {
+    let active = true;
     const controller = new AbortController();
     
       async function fetchData() {
         console.log("[PRODUCTS] Starting fetch sequence...");
         const startTime = performance.now();
         
-        // Sanity check for env vars
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        
-        console.log("[PRODUCTS] Env Check:", {
-          urlPresent: !!supabaseUrl,
-          keyPresent: !!supabaseKey,
-        });
-
-        if (!supabaseUrl || !supabaseKey) {
-          setError("Supabase configuration is missing. Check your .env.local file.");
-          setLoading(false);
-          return;
-        }
-
         // 15s absolute timeout
         const timeoutId = setTimeout(() => {
-          console.warn("[PRODUCTS] Fetch reached 15s timeout limit.");
-          controller.abort();
+          if (active) {
+            console.warn("[PRODUCTS] Fetch reached 15s timeout limit.");
+            controller.abort();
+          }
         }, 15000);
 
         try {
@@ -124,30 +112,31 @@ function ProductsContent() {
               .abortSignal(controller.signal),
           ]);
 
-          clearTimeout(timeoutId);
-
-          if (productError) throw productError;
-          if (categoryError) throw categoryError;
-          
-          const duration = (performance.now() - startTime).toFixed(2);
-          console.log(`[PRODUCTS] Successfully fetched ${productData?.length} products and ${categoryData?.length} categories in ${duration}ms.`);
-          
-          setProducts(productData || []);
-          setCategories(categoryData || []);
+          if (active) {
+            clearTimeout(timeoutId);
+            if (productError) throw productError;
+            if (categoryError) throw categoryError;
+            
+            const duration = (performance.now() - startTime).toFixed(2);
+            console.log(`[PRODUCTS] Successfully fetched ${productData?.length} products and ${categoryData?.length} categories in ${duration}ms.`);
+            
+            setProducts(productData || []);
+            setCategories(categoryData || []);
+          }
         } catch (err: any) {
-          clearTimeout(timeoutId);
-          const duration = (performance.now() - startTime).toFixed(2);
-          if (err.name === 'AbortError') {
-            console.log(`[PRODUCTS] Fetch aborted/timed out after ${duration}ms.`);
-            setError("The request timed out. Please check your connection or try again.");
-          } else {
-            console.error(`[PRODUCTS] Fetch failed after ${duration}ms:`, err);
-            setError(getErrorMessage(err));
+          if (active) {
+            clearTimeout(timeoutId);
+            const duration = (performance.now() - startTime).toFixed(2);
+            if (err.name === 'AbortError') {
+              console.log(`[PRODUCTS] Fetch aborted/timed out after ${duration}ms.`);
+              setError("The request timed out. Please check your connection or try again.");
+            } else {
+              console.error(`[PRODUCTS] Fetch failed after ${duration}ms:`, err);
+              setError(getErrorMessage(err));
+            }
           }
         } finally {
-          // err is not accessible here, so we just set loading to false
-          // unless the component was unmounted
-          if (!controller.signal.aborted) {
+          if (active) {
             setLoading(false);
           }
         }

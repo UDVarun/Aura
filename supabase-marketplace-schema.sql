@@ -80,14 +80,12 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = auth, public
 as $$
-  select exists (
-    select 1
-    from public.profiles
-    where id = auth.uid()
-      and role = 'admin'
-  );
+  -- Check user metadata directly to avoid recursion on public.profiles
+  select (raw_user_meta_data->>'role' = 'admin')
+  from auth.users
+  where id = auth.uid();
 $$;
 
 revoke all on function public.is_admin() from public;
@@ -524,13 +522,16 @@ with check (auth.uid() = id);
 create policy "Admins can view all profiles"
 on public.profiles
 for select
-using (public.is_admin());
+using (
+  (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+);
 
 create policy "Admins can update all profiles"
 on public.profiles
 for update
-using (public.is_admin())
-with check (public.is_admin());
+using (
+  (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+);
 
 -- =====================================================
 -- 18. VENDORS POLICIES
