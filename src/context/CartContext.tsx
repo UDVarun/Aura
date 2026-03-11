@@ -75,11 +75,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (authLoading) return;
 
     if (!isAuthenticated || !user) {
-      queueMicrotask(() => {
+      // Small delay to allow transient auth states to settle
+      const timer = setTimeout(() => {
         setItems([]);
         setIsCartLoading(false);
-      });
-      return;
+      }, 500);
+      return () => clearTimeout(timer);
     }
 
     void fetchCart();

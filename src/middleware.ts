@@ -21,35 +21,37 @@ export async function middleware(request: NextRequest) {
     }
     */
 
-    // Refresh the Supabase session on every request (required by @supabase/ssr)
+    // Refresh the Supabase session on every request
     const { supabaseResponse, user, supabase } = await updateSession(request);
 
-    // Faster role resolution: trust the cookie primarily to avoid blocking DB queries on every request.
+    // Faster role resolution: trust the cookie primarily to avoid blocking DB queries
     let role = request.cookies.get("role")?.value ?? null;
 
-    // Strict check for protected routes or if cookie is missing but user is logged in
+    // Strict check for protected routes
     const isProtectedRoute = pathname.startsWith(ADMIN_PREFIX) || isVendorRoute;
-    if (user && (!role || isProtectedRoute)) {
-        const { data } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", user.id)
-            .single();
-        role = data?.role ?? "customer";
+    
+    if (user) {
+        if (!role || isProtectedRoute) {
+            const { data } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+            role = data?.role ?? "customer";
 
-        // Sync legacy role cookie for client-side awareness
-        supabaseResponse.cookies.set("role", role ?? "customer", {
-            path: "/",
-            sameSite: "strict",
-            httpOnly: false,
-        });
-    } else if (!user) {
-        // Clear role cookie when logged out
-        supabaseResponse.cookies.set("role", "", {
-            path: "/",
-            maxAge: 0,
-        });
-        role = null;
+            // Sync role cookie for client-side awareness
+            supabaseResponse.cookies.set("role", role as string, {
+                path: "/",
+                sameSite: "lax",
+                httpOnly: false,
+                maxAge: 31536000, 
+            });
+        }
+    } else {
+        if (role) {
+            supabaseResponse.cookies.set("role", "", { path: "/", maxAge: 0 });
+            role = null;
+        }
     }
 
     // 1. Protect Admin routes
@@ -64,10 +66,6 @@ export async function middleware(request: NextRequest) {
 
     // 2. Protect Vendor routes
     if (isVendorRoute) {
-        const { data: vendor } = user
-            ? await supabase.from("vendors").select("status").eq("user_id", user.id).single()
-            : { data: null };
-
         if (!user) {
             const loginUrl = new URL("/login", request.url);
             loginUrl.searchParams.set("redirect", pathname);
@@ -79,29 +77,30 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL("/become-vendor", request.url));
         }
 
-        const isApprovedVendor = vendor?.status === "approved";
+        const { data: vendor } = await supabase
+            .from("vendors")
+            .select("status")
+            .eq("user_id", user.id)
+            .single();
 
-        // Allow vendor accounts to open the dashboard root even while pending/rejected.
-        // Management sub-routes remain restricted to approved vendors only.
+        const isApprovedVendor = vendor?.status === "approved";
         if (!isVendorRoot && !isApprovedVendor) {
             return NextResponse.redirect(new URL("/become-vendor", request.url));
         }
     }
 
-    // 3. Redirect already-logged-in users away from auth pages
+    // 3. Auth routes redirect
     if (AUTH_ROUTES.some((r) => pathname.startsWith(r)) && user) {
         const requestedRedirect = request.nextUrl.searchParams.get("redirect");
+        if (requestedRedirect?.startsWith("/")) {
+            return NextResponse.redirect(new URL(requestedRedirect, request.url));
+        }
         const dashboardMap: Record<string, string> = {
             admin: "/admin",
             vendor: "/vendor",
             customer: "/",
         };
-        if (requestedRedirect && requestedRedirect.startsWith("/")) {
-            return NextResponse.redirect(new URL(requestedRedirect, request.url));
-        }
-        return NextResponse.redirect(
-            new URL(dashboardMap[role ?? "customer"] ?? "/", request.url)
-        );
+        return NextResponse.redirect(new URL(dashboardMap[role ?? "customer"] ?? "/", request.url));
     }
 
     return supabaseResponse;

@@ -93,78 +93,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Initialize and listen to auth state changes
     useEffect(() => {
-        // Get the initial session
-        const init = async () => {
-            console.log("[AUTH] init() started. Checking session...");
-            const {
-                data: { session: initialSession },
-                error: sessionError
-            } = await supabase.auth.getSession();
+        let mounted = true;
 
-            if (sessionError) {
-                console.error("[AUTH] Error getting initial session:", sessionError);
-            }
+        async function getInitialSession() {
+            try {
+                const { data: { session: initSession } } = await supabase.auth.getSession();
+                if (!mounted) return;
 
-            if (initialSession?.user) {
-                // Try to get role from cookie synchronously to prevent UI blocking
-                const cookies = document.cookie.split(";");
-                const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
-                const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
-
-                // Set user immediately with cached/default role so UI renders instantly
-                console.log(`[AUTH] Initial session found for user: ${initialSession.user.email}. Role from cookie: ${role}`);
-                setUser(buildAuthUser(initialSession.user, role));
-                setSession(initialSession);
-                setIsLoading(false);
-
-                // Fetch actual role in background to ensure it's up-to-date
-                const actualRole = await fetchRole(initialSession.user.id);
-                if (actualRole !== role) {
-                    console.log(`[AUTH] Role mismatch. Cookie: ${role}, DB: ${actualRole}. Updating.`);
-                    setUser(buildAuthUser(initialSession.user, actualRole));
-                    document.cookie = `role=${actualRole}; path=/; SameSite=Lax`;
+                if (initSession) {
+                    console.log("[AUTH] Initial session recovered:", initSession.user.email);
+                    const cookies = document.cookie.split(";");
+                    const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
+                    const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+                    
+                    setSession(initSession);
+                    setUser(buildAuthUser(initSession.user, role));
+                    
+                    // Update role from DB in background
+                    fetchRole(initSession.user.id).then(actualRole => {
+                        if (mounted && actualRole !== role) {
+                            setUser(prev => prev ? buildAuthUser(initSession.user, actualRole) : null);
+                            document.cookie = `role=${actualRole}; path=/; max-age=31536000; SameSite=Lax`;
+                        }
+                    });
+                } else {
+                    console.log("[AUTH] No initial session found.");
                 }
-            } else {
-                console.log("[AUTH] No initial session found by getSession(). User is guest.");
-                setIsLoading(false);
+            } catch (err) {
+                console.error("[AUTH] Error in getSession:", err);
+            } finally {
+                if (mounted) setIsLoading(false);
             }
-        };
+        }
 
-        init();
+        getInitialSession();
 
-        // Listen for auth events (login, logout, OAuth callback, token refresh)
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, newSession: Session | null) => {
-            if (newSession?.user) {
-                // Read from cookie first
-                const cookies = document.cookie.split(";");
-                const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
-                const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
-
-                console.log(`[AUTH] State change: ${event}. Session user: ${newSession.user.email}. Role from cookie: ${role}`);
-                setUser(buildAuthUser(newSession.user, role));
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+            console.log(`[AUTH] Auth event: ${event}`);
+            
+            if (newSession) {
                 setSession(newSession);
+                // Try reading role cookie for immediate UI sync
+                const cookies = document.cookie.split(";");
+                const roleCookie = cookies.find((c) => c.trim().startsWith("role="));
+                const role = (roleCookie?.split("=")[1] as UserRole) || "customer";
+                
+                setUser(buildAuthUser(newSession.user, role));
 
+                // Fetch true role
                 const actualRole = await fetchRole(newSession.user.id);
-                if (actualRole !== role) {
-                    console.log(`[AUTH] Role updated on state change. ${role} -> ${actualRole}`);
+                if (mounted && actualRole !== role) {
                     setUser(buildAuthUser(newSession.user, actualRole));
-                    document.cookie = `role=${actualRole}; path=/; SameSite=Lax`;
+                    document.cookie = `role=${actualRole}; path=/; max-age=31536000; SameSite=Lax`;
                 }
             } else {
-                console.log(`[AUTH] State change: ${event}. No user session.`);
-                setUser(null);
                 setSession(null);
-                // Only clear if it wasn't a transient state change
+                setUser(null);
                 if (event === "SIGNED_OUT") {
                     document.cookie = "role=; path=/; max-age=0; SameSite=Lax";
                 }
             }
-            setIsLoading(false);
+            if (mounted) setIsLoading(false);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, [supabase, fetchRole]);
 
     // ── Email / Password Login ───────────────────────────────────────────────
