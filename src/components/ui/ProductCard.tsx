@@ -9,7 +9,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { formatCurrency } from "@/lib/currency";
 import styles from "./ProductCard.module.css";
 
-interface Product {
+export interface Product {
     id: string;
     name: string;
     price: number;
