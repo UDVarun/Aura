@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingBag, Users, LogOut, ChevronRight, Shapes, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, LogOut, ChevronRight, Shapes, ShieldAlert, ArrowUpRight } from "lucide-react";
 import styles from "./layout.module.css";
 import { useAuth } from "@/context/AuthContext";
 import clsx from "clsx";
@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         exact ? pathname === href : pathname.startsWith(href);
 
     return (
-        <div className={styles.shell}>
+        <div className={`${styles.shell} workspaceShell`}>
             {/* Sidebar */}
             <aside className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
@@ -70,7 +70,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Main */}
             <div className={styles.main}>
-                <div className={styles.content}>{children}</div>
+                <div className={styles.content}>
+                    <div className="workspaceTopbar">
+                        <div className="workspaceMeta">
+                            <span className="workspaceKicker">Admin workspace</span>
+                            <h1 className="workspaceHeading">Govern the platform with a sharper operational view.</h1>
+                            <p className="workspaceText">Products, vendors, cases, and orders now follow the same premium visual system as the storefront.</p>
+                        </div>
+                        <Link href="/" className="workspaceLink">
+                            Open Storefront
+                            <ArrowUpRight size={16} />
+                        </Link>
+                    </div>
+                    {children}
+                </div>
             </div>
         </div>
     );

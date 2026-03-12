@@ -1,205 +1,218 @@
-/* HeroCarousel.module.css - Premium Minimalist Edition */
-
 .carouselContainer {
     position: relative;
     width: 100%;
-    height: 85vh;
-    /* Slightly taller for more impact */
-    min-height: 600px;
-    max-height: 900px;
+    min-height: 680px;
     overflow: hidden;
-    background: var(--surface-1);
+    border-radius: 2rem;
+    background: linear-gradient(90deg, #f3ede3 0%, #f3ede3 42%, #e6dccd 42%, #e6dccd 100%);
 }
 
 .slide {
     position: absolute;
     inset: 0;
     opacity: 0;
-    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: scale(1.02);
+    transition: opacity 700ms ease;
     pointer-events: none;
 }
 
 .slide.active {
     opacity: 1;
-    transform: scale(1);
     pointer-events: auto;
 }
 
 .backgroundImage {
     object-fit: cover;
     object-position: center;
+    width: 56% !important;
+    left: auto !important;
+    right: 0 !important;
 }
 
-/* Deep, subtle overlay to ensure perfect text contrast without needing a box */
 .overlay {
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(to bottom,
-            rgba(0, 0, 0, 0.2) 0%,
-            rgba(0, 0, 0, 0.0) 30%,
-            rgba(0, 0, 0, 0.6) 80%,
-            rgba(0, 0, 0, 0.8) 100%),
-        radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+        linear-gradient(90deg, rgba(243, 237, 227, 1) 0%, rgba(243, 237, 227, 0.98) 40%, rgba(243, 237, 227, 0) 54%),
+        linear-gradient(180deg, rgba(230, 220, 205, 0.04) 0%, rgba(230, 220, 205, 0.2) 100%);
 }
 
 .content {
     position: absolute;
     inset: 0;
-    z-index: 10;
+    z-index: 2;
+    width: 44%;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: clamp(1.75rem, 4vw, 3.25rem);
+    color: #151515;
+}
+
+.eyebrow {
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    /* Push to bottom */
-    padding-bottom: 8rem;
-    /* Space for indicators */
-    text-align: center;
-    color: white;
-    width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding: 0.45rem 0.85rem;
+    margin-bottom: 1rem;
+    border-radius: 999px;
+    background: #b18f5f;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
 }
 
 .title {
-    font-size: clamp(3rem, 7vw, 6rem);
-    line-height: 1.05;
+    max-width: 9ch;
+    font-family: var(--font-sans);
+    font-size: clamp(2.9rem, 5vw, 4.9rem);
     font-weight: 700;
-    letter-spacing: -0.04em;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-    /* Optional: sleek gradient text for extra premium feel, or just pure white */
-    color: #ffffff;
+    line-height: 1.02;
+    letter-spacing: -0.05em;
+    margin-bottom: 1rem;
+    color: #161616;
 }
 
 .subtitle {
-    font-size: clamp(1.1rem, 2vw, 1.4rem);
-    font-weight: 400;
-    line-height: 1.5;
-    letter-spacing: 0.01em;
-    margin-bottom: 2.5rem;
-    color: rgba(255, 255, 255, 0.85);
-    max-width: 600px;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    max-width: 32rem;
+    font-size: clamp(1rem, 1.6vw, 1.1rem);
+    color: rgba(21, 21, 21, 0.78);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+}
+
+.actionRow {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
 }
 
 .ctaButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 1.1rem 2.8rem;
-    background: #ffffff;
-    color: #000000;
-    font-weight: 600;
-    font-size: 1.05rem;
-    letter-spacing: 0.02em;
-    border-radius: 9999px;
-    border: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    text-decoration: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    min-height: 48px;
+    padding: 0.9rem 1.35rem;
+    border-radius: 999px;
+    background: #111;
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 700;
+    box-shadow: 0 18px 30px -22px rgba(0, 0, 0, 0.4);
+    transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
 .ctaButton:hover {
-    transform: translateY(-2px) scale(1.02);
-    background: #f8f9fa;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    color: #fff;
+    transform: translateY(-2px);
+    filter: brightness(1.03);
 }
 
-/* ── Navigation Arrows ── */
+.caption {
+    color: rgba(21, 21, 21, 0.58);
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
 .navButton {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    z-index: 20;
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
+    z-index: 3;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    color: #fff;
+    background: rgba(17, 17, 17, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transform: translateY(-50%);
+    transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
 .navButton:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-50%) scale(1.05);
+    transform: translateY(-50%) scale(1.04);
+    background: #111;
 }
 
 .prev {
-    left: 3rem;
+    left: 1.2rem;
 }
 
 .next {
-    right: 3rem;
+    right: 1.2rem;
 }
 
-/* ── Indicators ── */
 .indicators {
     position: absolute;
-    bottom: 2.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 20;
+    left: clamp(1.5rem, 4vw, 3rem);
+    bottom: 1.4rem;
+    z-index: 3;
     display: flex;
-    gap: 0.75rem;
+    gap: 0.55rem;
 }
 
 .dot {
-    width: 48px;
-    height: 3px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.2);
-    cursor: pointer;
-    transition: all 0.3s ease;
+    width: 2.2rem;
+    height: 0.24rem;
+    border-radius: 999px;
+    background: rgba(17, 17, 17, 0.2);
     border: none;
     padding: 0;
 }
 
 .dotActive {
-    background: #ffffff;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    background: #111;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .carouselContainer {
-        height: 75vh;
+        min-height: 600px;
+        background: linear-gradient(180deg, #f3ede3 0%, #f3ede3 48%, #e6dccd 48%, #e6dccd 100%);
+    }
+
+    .backgroundImage {
+        width: 100% !important;
+        height: 52% !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+    }
+
+    .overlay {
+        background:
+            linear-gradient(180deg, rgba(243, 237, 227, 1) 0%, rgba(243, 237, 227, 0.98) 48%, rgba(243, 237, 227, 0) 60%),
+            linear-gradient(180deg, rgba(230, 220, 205, 0.06) 0%, rgba(230, 220, 205, 0.16) 100%);
     }
 
     .content {
-        padding-bottom: 6rem;
+        width: 100%;
+        height: 52%;
+        justify-content: center;
+        padding-bottom: 2rem;
+    }
+}
+
+@media (max-width: 780px) {
+    .carouselContainer {
+        min-height: 540px;
+        border-radius: 1.5rem;
     }
 
     .title {
-        margin-bottom: 1rem;
+        max-width: 10ch;
+        font-size: clamp(2.1rem, 8vw, 3.2rem);
     }
 
     .subtitle {
-        margin-bottom: 2rem;
+        max-width: 100%;
     }
 
     .navButton {
         display: none;
-        /* Hide arrows on mobile for cleaner look */
-    }
-
-    .prev,
-    .next {
-        display: none;
-    }
-
-    .dot {
-        width: 32px;
     }
 }

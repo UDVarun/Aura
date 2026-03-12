@@ -1,90 +1,102 @@
-/* HorizontalScroller.module.css */
-
 .section {
-    padding: 3rem 0;
     position: relative;
-    overflow: hidden;
 }
 
 .header {
     display: flex;
+    align-items: end;
     justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+    margin-bottom: 1.35rem;
+    padding-bottom: 0.95rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.headerTexts {
+    max-width: 720px;
 }
 
 .title {
-    font-size: clamp(1.5rem, 3vw, 2.2rem);
-    letter-spacing: -0.02em;
-    font-weight: 700;
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    letter-spacing: -0.03em;
 }
 
 .subtitle {
     font-size: var(--text-sm);
-    color: var(--muted);
-    margin-top: 0.2rem;
+    color: var(--muted-light);
+    margin-top: 0.35rem;
+    line-height: 1.7;
 }
 
 .controls {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.55rem;
+    flex-shrink: 0;
 }
 
 .scrollBtn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
+    width: 3rem;
+    height: 3rem;
+    border-radius: 999px;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--surface-1) 95%, transparent), color-mix(in srgb, var(--surface-2) 84%, transparent));
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     color: var(--muted-light);
-    transition: all var(--transition-fast);
+    transition: transform var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+    box-shadow: var(--shadow-sm);
 }
 
 .scrollBtn:hover {
-    background: var(--surface-hover);
+    transform: translateY(-2px);
     color: var(--foreground);
-    border-color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
+    background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 12%, var(--surface-1)), color-mix(in srgb, var(--surface-2) 90%, transparent));
 }
 
 .scrollWrapper {
-    /* We want the scroll container to overflow the standard centered container visually */
-    padding-left: max(1rem, calc((100vw - 1200px) / 2));
-    padding-right: 1rem;
+    overflow: hidden;
 }
 
 .scrollContainer {
-    display: flex;
-    gap: 1.25rem;
+    --card-gap: 1.15rem;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - (var(--card-gap) * 3)) / 4);
+    align-items: stretch;
+    gap: var(--card-gap);
     overflow-x: auto;
     scroll-behavior: smooth;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    /* Firefox */
-    padding: 0.5rem 0 2rem;
-    /* padding bottom for shadow */
+    padding: 0.35rem 0 1rem;
 }
 
 .scrollContainer::-webkit-scrollbar {
     display: none;
-    /* Chrome/Safari */
 }
 
-/* Make children snap and have uniform width */
 .scrollContainer>* {
+    min-width: 0;
+    min-height: 100%;
     scroll-snap-align: start;
-    min-width: 280px;
-    max-width: 300px;
-    flex-shrink: 0;
 }
 
-@media (min-width: 768px) {
-    .scrollContainer>* {
-        min-width: 320px;
+@media (max-width: 1024px) {
+    .scrollContainer {
+        grid-auto-columns: calc((100% - (var(--card-gap) * 1)) / 2);
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .scrollContainer {
+        --card-gap: 1rem;
+        grid-auto-columns: 84%;
     }
 }

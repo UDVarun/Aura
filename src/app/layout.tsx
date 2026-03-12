@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import CartDrawer from "@/components/ui/CartDrawer";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { CartProvider } from "@/context/CartContext";
@@ -11,8 +7,7 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { AccountDataProvider } from "@/context/AccountDataContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { VendorProvider } from "@/context/VendorContext";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+import AppChrome from "@/components/layout/AppChrome";
 
 export const viewport = {
   themeColor: "#0f172a",
@@ -31,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.variable}>
+      <body>
         <ThemeProvider>
           <AuthProvider>
             <AccountDataProvider>
@@ -39,10 +34,7 @@ export default function RootLayout({
                 <WishlistProvider>
                   <NotificationProvider>
                     <VendorProvider>
-                      <Navbar />
-                      <CartDrawer />
-                      <main>{children}</main>
-                      <Footer />
+                      <AppChrome>{children}</AppChrome>
                     </VendorProvider>
                   </NotificationProvider>
                 </WishlistProvider>

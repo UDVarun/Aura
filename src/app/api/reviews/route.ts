@@ -4,18 +4,37 @@ import { requireRole } from "@/lib/marketplace";
 
 export async function GET(request: NextRequest) {
     const supabase = await createServerSupabase(request);
-    const productId = new URL(request.url).searchParams.get("productId");
+    const searchParams = new URL(request.url).searchParams;
+    const productId = searchParams.get("productId");
+    const sort = searchParams.get("sort") || "top"; // top, recent, rating_high, rating_low, verified
 
     if (!productId) {
         return NextResponse.json({ error: "productId is required." }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("product_reviews")
-        .select("id, rating, title, body, created_at")
+        .select(`
+            id, rating, title, body, created_at, media_urls, helpful_count, is_verified, weighted_score,
+            profiles:customer_id (id, email)
+        `)
         .eq("product_id", productId)
-        .eq("status", "published")
-        .order("created_at", { ascending: false });
+        .eq("status", "published");
+
+    if (sort === "recent") {
+        query = query.order("created_at", { ascending: false });
+    } else if (sort === "rating_high") {
+        query = query.order("rating", { ascending: false });
+    } else if (sort === "rating_low") {
+        query = query.order("rating", { ascending: true });
+    } else if (sort === "verified") {
+        query = query.eq("is_verified", true).order("created_at", { ascending: false });
+    } else {
+        // Default "top": weighted score then helpful count
+        query = query.order("weighted_score", { ascending: false }).order("helpful_count", { ascending: false });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -27,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createServerSupabase(request);
-        const { user } = await requireRole(supabase, ["customer"]);
+        const { user } = await requireRole(supabase, ["customer", "vendor", "admin"]);
         const payload = await request.json();
 
         if (!payload.productId || !payload.rating) {
@@ -56,13 +75,16 @@ export async function POST(request: NextRequest) {
                     customer_id: user.id,
                     order_item_id: orderItem?.id ?? null,
                     rating: Number(payload.rating),
-                    title: payload.title?.trim() ?? null,
-                    body: payload.body?.trim() ?? null,
+                    title: payload.title?.trim() || null,
+                    body: payload.body?.trim() || null,
+                    media_urls: payload.mediaUrls || [],
+                    is_verified: !!orderItem,
+                    weighted_score: !!orderItem ? Number(payload.rating) * 1.2 : Number(payload.rating),
                     status: "published",
                 },
-                { onConflict: "product_id,customer_id,order_item_id" }
+                { onConflict: "product_id,customer_id" }
             )
-            .select("id, rating, title, body, created_at")
+            .select("id, rating, title, body, created_at, media_urls, helpful_count, is_verified")
             .single();
 
         if (error) {

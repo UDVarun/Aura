@@ -51,6 +51,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                 </Link>
+                <div className={styles.imageTint} />
                 <div className={styles.quickAdd}>
                     <Button
                         variant="primary"
@@ -77,16 +78,19 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
 
             <div className={styles.content}>
-                <div className={styles.category}>{product.category}</div>
+                <div className={styles.metaRow}>
+                    <div className={styles.category}>{product.category}</div>
+                    <div className={styles.rating}>
+                        <Star size={14} fill="currentColor" />
+                        <span>{product.rating}</span>
+                    </div>
+                </div>
                 <Link href={`/products/${product.id}`} className={styles.titleLink}>
                     <h3 className={styles.title}>{product.name}</h3>
                 </Link>
                 <div className={styles.priceRow}>
                     <span className={styles.price}>{formatCurrency(product.price)}</span>
-                    <div className={styles.rating}>
-                        <Star size={14} fill="#FFB800" color="#FFB800" />
-                        <span>{product.rating}</span>
-                    </div>
+                    <span className={styles.detailLink}>{inCart ? "View bag" : "Quick add"}</span>
                 </div>
             </div>
         </div>

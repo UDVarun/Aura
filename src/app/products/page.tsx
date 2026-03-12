@@ -88,6 +88,7 @@ function ProductsContent() {
     const controller = new AbortController();
     
       async function fetchData() {
+        if (active) setError(null);
         console.log("[PRODUCTS] Starting fetch sequence...");
         const startTime = performance.now();
         
@@ -192,6 +193,7 @@ function ProductsContent() {
         .subscribe();
 
       return () => {
+        active = false;
         controller.abort();
         supabase.removeChannel(subscription);
       };

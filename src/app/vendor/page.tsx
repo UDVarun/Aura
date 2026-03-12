@@ -5,7 +5,8 @@ import styles from "./page.module.css";
 import { formatCurrency } from "@/lib/currency";
 import { useAuth } from "@/context/AuthContext";
 import { useVendor } from "@/context/VendorContext";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Star } from "lucide-react";
+import { Stars } from "@/components/marketplace/Stars";
 
 export default function VendorDashboardPage() {
     const { user } = useAuth();
@@ -79,9 +80,9 @@ export default function VendorDashboardPage() {
                 </div>
                 <div className={`${styles.statCard} ${styles.stat_purple}`}>
                     <div className={styles.statHeader}>
-                        <span className={styles.statLabel}>Role</span>
+                        <span className={styles.statLabel}>Avg Rating</span>
                     </div>
-                    <div className={styles.statValue}>{user?.role ?? "vendor"}</div>
+                    <div className={styles.statValue}>{stats.averageRating.toFixed(1)}</div>
                 </div>
                 <div className={`${styles.statCard} ${styles.stat_gold}`}>
                     <div className={styles.statHeader}>
@@ -121,6 +122,7 @@ export default function VendorDashboardPage() {
                                 <th>Title</th>
                                 <th>Price</th>
                                 <th>Stock</th>
+                                <th>Rating</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -129,6 +131,13 @@ export default function VendorDashboardPage() {
                                     <td>{product.title}</td>
                                     <td>{formatCurrency(product.price)}</td>
                                     <td>{product.stock_quantity}</td>
+                                    <td>
+                                        <Stars 
+                                            rating={product.avg_rating || 0} 
+                                            count={product.review_count || 0} 
+                                            size={14} 
+                                        />
+                                    </td>
                                 </tr>
                             ))}
                             {products.length === 0 && (

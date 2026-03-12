@@ -1,0 +1,24 @@
+.ratingContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.starFilled {
+  color: #f5b840;
+}
+
+.starEmpty {
+  color: #d1d5db;
+}
+
+.reviewLink {
+  font-size: 0.85rem;
+  color: var(--muted);
+}

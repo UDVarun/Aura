@@ -9,11 +9,13 @@ import clsx from "clsx";
 
 export interface Banner {
     id: string;
+    eyebrow?: string;
     title: string;
     subtitle: string;
     image: string;
     linkText: string;
     linkHref: string;
+    caption?: string;
 }
 
 interface HeroCarouselProps {
@@ -24,9 +26,14 @@ export function HeroCarousel({ banners }: HeroCarouselProps) {
     const [current, setCurrent] = useState(0);
 
     useEffect(() => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+            return;
+        }
+
         const timer = setInterval(() => {
             setCurrent((prev) => (prev + 1) % banners.length);
-        }, 5000);
+        }, 6500);
+
         return () => clearInterval(timer);
     }, [banners.length]);
 
@@ -48,14 +55,20 @@ export function HeroCarousel({ banners }: HeroCarouselProps) {
                         fill
                         priority={index === 0}
                         className={styles.backgroundImage}
+                        sizes="(max-width: 1080px) 100vw, 58vw"
+                        quality={78}
                     />
                     <div className={styles.overlay} />
                     <div className={styles.content}>
+                        {banner.eyebrow && <span className={styles.eyebrow}>{banner.eyebrow}</span>}
                         <h1 className={styles.title}>{banner.title}</h1>
                         <p className={styles.subtitle}>{banner.subtitle}</p>
-                        <Link href={banner.linkHref} className={styles.ctaButton}>
-                            {banner.linkText}
-                        </Link>
+                        <div className={styles.actionRow}>
+                            <Link href={banner.linkHref} className={styles.ctaButton}>
+                                {banner.linkText}
+                            </Link>
+                            {banner.caption && <span className={styles.caption}>{banner.caption}</span>}
+                        </div>
                     </div>
                 </div>
             ))}

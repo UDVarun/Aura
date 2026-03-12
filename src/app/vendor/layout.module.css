@@ -6,23 +6,12 @@
     position: relative;
 }
 
-.shell::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at top left, var(--vendor-accent), transparent 36%),
-        radial-gradient(circle at bottom right, var(--ambient-2), transparent 28%);
-    opacity: 0.95;
-}
-
 .sidebar {
-    width: 252px;
+    width: 272px;
     flex-shrink: 0;
     background:
-        linear-gradient(180deg, color-mix(in srgb, var(--vendor-sidebar) 94%, transparent), color-mix(in srgb, var(--background) 92%, transparent));
-    border-right: 1px solid var(--sidebar-stroke);
+        linear-gradient(180deg, color-mix(in srgb, var(--vendor-sidebar) 96%, transparent), color-mix(in srgb, var(--background) 94%, transparent));
+    border-right: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -33,7 +22,7 @@
     overflow-y: auto;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    box-shadow: 20px 0 50px -42px rgba(0, 0, 0, 0.5);
+    box-shadow: 24px 0 60px -42px rgba(0, 0, 0, 0.62);
 }
 
 .sidebarHeader {
@@ -82,7 +71,7 @@
     padding: 1rem 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.35rem;
 }
 
 .navItem {
@@ -90,7 +79,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.8rem 0.9rem;
-    border-radius: var(--radius-md);
+    border-radius: 1rem;
     font-size: var(--text-sm);
     font-weight: 500;
     color: var(--muted);
@@ -204,15 +193,15 @@
 
 .main {
     flex: 1;
-    margin-left: 252px;
+    margin-left: 272px;
     min-height: 100vh;
     background: transparent;
     position: relative;
 }
 
 .content {
-    padding: 2.25rem;
-    max-width: 1320px;
+    padding: 1.5rem 2.25rem 2.25rem;
+    max-width: 1480px;
     position: relative;
     z-index: 1;
 }

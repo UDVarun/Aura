@@ -25,11 +25,26 @@ export interface VendorProduct {
     stock_quantity: number;
     image_url: string;
     created_at: string;
+    avg_rating?: number;
+    review_count?: number;
+}
+
+export interface VendorReview {
+    id: string;
+    product_id: string;
+    rating: number;
+    title: string;
+    body: string;
+    created_at: string;
+    is_verified: boolean;
+    profiles: { email: string };
+    products: { title: string };
 }
 
 interface VendorContextType {
     orders: VendorOrder[];
     products: VendorProduct[];
+    reviews: VendorReview[];
     loading: boolean;
     refreshData: () => Promise<void>;
     stats: {
@@ -37,6 +52,7 @@ interface VendorContextType {
         totalOrders: number;
         productCount: number;
         lowStockItems: number;
+        averageRating: number;
     };
 }
 
@@ -48,6 +64,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
 
     const [orders, setOrders] = useState<VendorOrder[]>([]);
     const [products, setProducts] = useState<VendorProduct[]>([]);
+    const [reviews, setReviews] = useState<VendorReview[]>([]);
     const [loading, setLoading] = useState(true);
 
     const refreshData = useCallback(async () => {
@@ -65,11 +82,27 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
                     .from("products")
                     .select("*")
                     .eq("vendor_id", user.id)
+                    .order("created_at", { ascending: false }),
+                supabase
+                    .from("product_reviews")
+                    .select("*, profiles:customer_id(email), products:product_id(title)")
+                    .in("product_id", products.map(p => p.id))
                     .order("created_at", { ascending: false })
+                    .limit(20)
             ]);
 
             if (ordersRes.data) setOrders(ordersRes.data as any);
             if (productsRes.data) setProducts(productsRes.data as any);
+            if (productsRes.data && productsRes.data.length > 0) {
+                // If we have products, fetch their reviews (since the initial fetch might fail if product list changed)
+                const { data: reviewsData } = await supabase
+                    .from("product_reviews")
+                    .select("*, profiles:customer_id(email), products:product_id(title)")
+                    .in("product_id", productsRes.data.map((p: any) => p.id))
+                    .order("created_at", { ascending: false })
+                    .limit(20);
+                if (reviewsData) setReviews(reviewsData as any);
+            }
         } catch (error) {
             console.error("Error fetching vendor data:", error);
         } finally {
@@ -125,17 +158,23 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     const stats = React.useMemo(() => {
         const totalRevenue = orders.reduce((sum, item) => sum + Number(item.line_total || 0), 0);
         const lowStockItems = products.filter(p => Number(p.stock_quantity) < 5).length;
+        
+        const productsWithRating = products.filter(p => p.avg_rating && p.avg_rating > 0);
+        const averageRating = productsWithRating.length > 0 
+            ? productsWithRating.reduce((sum, p) => sum + (p.avg_rating || 0), 0) / productsWithRating.length
+            : 0;
 
         return {
             totalRevenue,
             totalOrders: orders.length,
             productCount: products.length,
-            lowStockItems
+            lowStockItems,
+            averageRating
         };
     }, [orders, products]);
 
     return (
-        <VendorContext.Provider value={{ orders, products, loading, refreshData, stats }}>
+        <VendorContext.Provider value={{ orders, products, reviews, loading, refreshData, stats }}>
             {children}
         </VendorContext.Provider>
     );

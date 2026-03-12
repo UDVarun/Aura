@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { SupportInbox } from "@/components/marketplace/SupportInbox";
 import { useAuth } from "@/context/AuthContext";
+import { useVendor } from "@/context/VendorContext";
+import { Stars } from "@/components/marketplace/Stars";
 import styles from "./page.module.css";
 
 type QuestionRow = {
@@ -18,6 +20,7 @@ type QuestionRow = {
 export default function VendorCommunicationsPage() {
     const supabase = createClient();
     const { user, isLoading } = useAuth();
+    const { reviews: vendorReviews } = useVendor();
     const [questions, setQuestions] = useState<QuestionRow[]>([]);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [feedback, setFeedback] = useState("");
@@ -129,6 +132,38 @@ export default function VendorCommunicationsPage() {
                 title="Support cases assigned to your store"
                 subtitle="Resolve order issues, reply with evidence, and keep the customer updated inside Aura."
             />
+
+            <section style={{ marginTop: "3rem" }}>
+                <div className={styles.pageHeader}>
+                    <div>
+                        <h2 className={styles.pageTitle} style={{ fontSize: "1.55rem" }}>Customer reviews</h2>
+                        <p className={styles.pageSubtitle}>Monitor feedback across your catalog and identify areas for improvement.</p>
+                    </div>
+                </div>
+
+                <div className={styles.questionGrid}>
+                    {vendorReviews.length === 0 && (
+                        <article className={styles.questionCard}>No customer reviews yet.</article>
+                    )}
+                    {vendorReviews.map((review) => (
+                        <article key={review.id} className={styles.questionCard}>
+                            <div className={styles.questionMeta}>
+                                <strong>{review.products?.title ?? "Product review"}</strong>
+                                <span>{new Date(review.created_at).toLocaleDateString("en-IN")}</span>
+                            </div>
+                            <div style={{ margin: "0.5rem 0" }}>
+                                <Stars rating={review.rating} showCount={false} size={14} />
+                            </div>
+                            <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>{review.title}</div>
+                            <div style={{ fontSize: "0.9rem", color: "var(--muted-light)" }}>{review.body}</div>
+                            <div className={styles.questionMeta} style={{ marginTop: "1rem", borderTop: "1px solid var(--panel-border)", paddingTop: "0.75rem" }}>
+                                <span style={{ fontSize: "0.75rem" }}>Reviewed by: {review.profiles?.email}</span>
+                                {review.is_verified && <span className="badge badge-green">Verified Purchase</span>}
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 }

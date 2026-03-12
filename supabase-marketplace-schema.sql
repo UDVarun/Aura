@@ -192,7 +192,9 @@ alter table public.products add column if not exists image_url text;
 alter table public.products add column if not exists is_featured boolean not null default false;
 alter table public.products add column if not exists brand text default 'Aura';
 alter table public.products add column if not exists tier text not null default 'standard' check (tier in ('elite', 'premium', 'standard'));
-alter table public.products add column if not exists rating numeric(2,1) default 4.5;
+alter table public.products add column if not exists avg_rating numeric(2,1) default 0.0;
+alter table public.products add column if not exists review_count integer default 0;
+alter table public.products add column if not exists rating_distribution jsonb default '{"1":0,"2":0,"3":0,"4":0,"5":0}'::jsonb;
 alter table public.products add column if not exists updated_at timestamptz not null default now();
 
 drop trigger if exists products_set_updated_at on public.products;
@@ -363,11 +365,124 @@ create table if not exists public.product_reviews (
   rating integer not null check (rating between 1 and 5),
   title text,
   body text,
+  media_urls jsonb default '[]'::jsonb,
+  helpful_count integer not null default 0,
+  unhelpful_count integer not null default 0,
+  is_verified boolean not null default false,
+  weighted_score numeric(4,2),
   status text not null default 'published',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (product_id, customer_id, order_item_id)
+  unique (product_id, customer_id)
 );
+
+-- Table for helpful/unhelpful votes
+create table if not exists public.review_votes (
+  id uuid primary key default gen_random_uuid(),
+  review_id uuid not null references public.product_reviews(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  vote_type text not null check (vote_type in ('helpful', 'unhelpful')),
+  created_at timestamptz not null default now(),
+  unique (review_id, user_id)
+);
+
+alter table public.review_votes enable row level security;
+
+create policy "Anyone can view review votes" on public.review_votes for select using (true);
+create policy "Authenticated users can vote" on public.review_votes for insert with check (auth.uid() = user_id);
+create policy "Users can delete own votes" on public.review_votes for delete using (auth.uid() = user_id);
+
+-- trigger function for product aggregates
+create or replace function public.update_product_review_aggregates()
+returns trigger
+language plpgsql
+security definer
+as $$
+declare
+  p_id uuid;
+begin
+  if (tg_op = 'DELETE') then p_id = old.product_id;
+  else p_id = new.product_id;
+  end if;
+
+  update public.products
+  set 
+    avg_rating = (select coalesce(avg(rating), 0) from public.product_reviews where product_id = p_id and status = 'published'),
+    review_count = (select count(*) from public.product_reviews where product_id = p_id and status = 'published'),
+    rating_distribution = (
+      select jsonb_object_agg(rating::text, count)
+      from (
+        select rating, count(*) as count
+        from public.product_reviews
+        where product_id = p_id and status = 'published'
+        group by rating
+      ) t
+    )
+  where id = p_id;
+
+  return null;
+end;
+$$;
+
+drop trigger if exists on_review_changed on public.product_reviews;
+create trigger on_review_changed
+after insert or update or delete on public.product_reviews
+for each row execute function public.update_product_review_aggregates();
+
+-- trigger function for helpful counts
+create or replace function public.update_review_vote_counts()
+returns trigger
+language plpgsql
+security definer
+as $$
+declare
+  r_id uuid;
+begin
+  if (tg_op = 'DELETE') then r_id = old.review_id;
+  else r_id = new.review_id;
+  end if;
+
+  update public.product_reviews
+  set 
+    helpful_count = (select count(*) from public.review_votes where review_id = r_id and vote_type = 'helpful'),
+    unhelpful_count = (select count(*) from public.review_votes where review_id = r_id and vote_type = 'unhelpful')
+  where id = r_id;
+
+  return null;
+end;
+$$;
+
+drop trigger if exists on_vote_changed on public.review_votes;
+create trigger on_vote_changed
+after insert or update or delete on public.review_votes
+for each row execute function public.update_review_vote_counts();
+
+-- Create table for reporting abusive reviews
+create table if not exists public.review_reports (
+  id uuid primary key default gen_random_uuid(),
+  review_id uuid not null references public.product_reviews(id) on delete cascade,
+  reporter_id uuid not null references public.profiles(id) on delete cascade,
+  reason text not null,
+  status text not null default 'pending' check (status in ('pending', 'resolved', 'dismissed')),
+  created_at timestamptz not null default now(),
+  unique (review_id, reporter_id)
+);
+
+alter table public.review_reports enable row level security;
+
+create policy "Admins can view reports" on public.review_reports for select using (
+  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+);
+create policy "Authenticated users can report" on public.review_reports for insert with check (auth.uid() = reporter_id);
+
+-- Enable Realtime for reviews and votes
+begin;
+  drop publication if exists supabase_realtime;
+  create publication supabase_realtime;
+commit;
+alter publication supabase_realtime add table public.product_reviews;
+alter publication supabase_realtime add table public.review_votes;
+alter publication supabase_realtime add table public.products; -- For live rating updates
 
 create index if not exists product_reviews_product_id_idx on public.product_reviews(product_id);
 
@@ -502,6 +617,17 @@ drop policy if exists "Authenticated users can insert own products" on public.pr
 drop policy if exists "Authenticated users can update own products" on public.products;
 drop policy if exists "Authenticated users can delete own products" on public.products;
 drop policy if exists "Admins can manage all products" on public.products;
+
+drop policy if exists "Anyone can view product images" on public.product_images;
+drop policy if exists "Vendors can manage own product images" on public.product_images;
+drop policy if exists "Admins can manage all product images" on public.product_images;
+
+drop policy if exists "Anyone can view review votes" on public.review_votes;
+drop policy if exists "Authenticated users can vote" on public.review_votes;
+drop policy if exists "Users can delete own votes" on public.review_votes;
+
+drop policy if exists "Admins can view reports" on public.review_reports;
+drop policy if exists "Authenticated users can report" on public.review_reports;
 
 drop policy if exists "Public can view product images" on storage.objects;
 drop policy if exists "Authenticated users can upload product images" on storage.objects;

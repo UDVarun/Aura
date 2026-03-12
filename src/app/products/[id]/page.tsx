@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -22,6 +22,8 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
+import ReviewDistribution from "@/components/reviews/ReviewDistribution";
+import { ThumbsUp, Camera, Video, CheckCircle2 } from "lucide-react";
 
 type ProductRecord = {
   id: string;
@@ -36,6 +38,9 @@ type ProductRecord = {
   vendor_id: string | null;
   categories?: any;
   product_images?: { url: string; display_order: number }[] | null;
+  avg_rating?: number;
+  review_count?: number;
+  rating_distribution?: Record<string, number>;
 };
 
 type ProductQuestion = {
@@ -53,6 +58,10 @@ type ProductReview = {
   title: string | null;
   body: string | null;
   created_at: string;
+  is_verified: boolean;
+  helpful_count: number;
+  media_urls?: string[];
+  profiles?: { email: string };
 };
 
 function Stars({ rating, count }: { rating: number; count?: number }) {
@@ -101,6 +110,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [quantity, setQuantity] = useState(1);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const [reviewSort, setReviewSort] = useState("top");
+  const [reviewFiles, setReviewFiles] = useState<File[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const addActionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -115,105 +127,116 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    let active = true;
+  const loadData = useCallback(async (active = true) => {
+    setLoading(true);
+    setFeedback("");
 
-    async function loadData() {
-      setLoading(true);
-      setFeedback("");
+    let { data: productData, error } = await supabase
+      .from("products")
+      .select(`
+        id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
+        categories(name),
+        product_images(url, display_order),
+        avg_rating, review_count, rating_distribution
+      `)
+      .eq("id", id)
+      .single() as any;
 
-      let { data: productData, error } = await supabase
-        .from("products")
-        .select(`
-          id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
-          categories(name),
-          product_images(url, display_order)
-        `)
-        .eq("id", id)
-        .single() as any;
-
-      // Fallback: If product_images relationship is missing (table not created), fetch product without it
-      if (error && (error.code === "PGRST200" || error.code === "PGRST205")) {
-          console.warn("[ProductDetailPage] product_images table missing or relationship broken. Falling back to simple fetch.");
-          const fallback = await supabase
-            .from("products")
-            .select(`
-                id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
-                categories(name)
-            `)
-            .eq("id", id)
-            .single() as any;
-          
-          // Inject an empty array to satisfy the ProductRecord type
-          if (fallback.data) {
-              (fallback.data as any).product_images = [];
-          }
-          productData = fallback.data;
-          error = fallback.error;
-      }
-
-      if (!active) return;
-      if (error || !productData) {
-        console.error("[ProductDetailPage] Error fetching product:", error, "ID:", id);
-        setProduct(null);
-        setLoading(false);
-        return;
-      }
-
-      console.log("[ProductDetailPage] Product loaded:", productData.title);
-      setProduct(productData as unknown as ProductRecord);
-
-      if (productData.vendor_id) {
-        const { data: vendor } = await supabase
-          .from("vendors")
-          .select("store_name")
-          .eq("user_id", productData.vendor_id)
-          .single();
-        if (active && vendor?.store_name) {
-          setSellerName(vendor.store_name);
+    if (error && (error.code === "PGRST200" || error.code === "PGRST205")) {
+        console.warn("[ProductDetailPage] product_images table missing. Falling back.");
+        const fallback = await supabase
+          .from("products")
+          .select(`
+              id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
+              categories(name),
+              avg_rating, review_count, rating_distribution
+          `)
+          .eq("id", id)
+          .single() as any;
+        
+        if (fallback.data) {
+            (fallback.data as any).product_images = [];
         }
-      }
-
-      const [questionRes, reviewRes] = await Promise.all([
-        fetch(`/api/product-questions?productId=${id}`),
-        fetch(`/api/reviews?productId=${id}`),
-      ]);
-
-      const questionPayload = await questionRes.json();
-      const reviewPayload = await reviewRes.json();
-
-      if (!active) return;
-      setQuestions(questionPayload.questions ?? []);
-      setReviews(reviewPayload.reviews ?? []);
-      setLoading(false);
+        productData = fallback.data;
+        error = fallback.error;
     }
 
-    loadData();
+    if (!active) return;
+    if (error || !productData) {
+      console.error("[ProductDetailPage] Error fetching product:", error);
+      setProduct(null);
+      setLoading(false);
+      return;
+    }
+
+    setProduct(productData as unknown as ProductRecord);
+
+    if (productData.vendor_id) {
+      const { data: vendor } = await supabase
+        .from("vendors")
+        .select("store_name")
+        .eq("user_id", productData.vendor_id)
+        .single();
+      if (active && vendor?.store_name) {
+        setSellerName(vendor.store_name);
+      }
+    }
+
+    const [questionRes, reviewRes] = await Promise.all([
+      fetch(`/api/product-questions?productId=${id}`),
+      fetch(`/api/reviews?productId=${id}&sort=${reviewSort}`),
+    ]);
+
+    const questionPayload = await questionRes.json();
+    const reviewPayload = await reviewRes.json();
+
+    if (!active) return;
+    setQuestions(questionPayload.questions ?? []);
+    setReviews(reviewPayload.reviews ?? []);
+    setLoading(false);
+  }, [id, supabase, reviewSort]);
+
+  useEffect(() => {
+    let active = true;
+    loadData(active);
 
     const subscription = supabase
-      .channel(`product-${id}`)
+      .channel(`product-updates-${id}`)
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "products",
           filter: `id=eq.${id}`,
         },
         () => {
-          // Re-fetch to get joined category data
-          supabase
-            .from("products")
-            .select(`
-              id, title, description, price, brand, tier, rating, stock_quantity, image_url, vendor_id, 
-              categories(name),
-              product_images(url, display_order)
-            `)
-            .eq("id", id)
-            .single()
-            .then(({ data }) => {
-              if (data) setProduct(data as unknown as ProductRecord);
-            });
+          loadData(active);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "product_reviews",
+          filter: `product_id=eq.${id}`,
+        },
+        () => {
+          loadData(active);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "review_votes",
+        },
+        () => {
+            // Since review_votes doesn't have product_id, we just refresh all for now if any vote changes
+            // Realistically we'd filter by review_id but product_reviews refresh usually covers it
+            loadData(active);
         }
       )
       .subscribe();
@@ -222,7 +245,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       active = false;
       supabase.removeChannel(subscription);
     };
-  }, [id, supabase]);
+  }, [id, supabase, loadData]);
 
   const formattedPrice = useMemo(() => {
     return formatCurrency(parsePriceValue(product?.price));
@@ -311,25 +334,76 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     setSubmittingQuestion(false);
   };
 
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!product) return;
+  const handleHelpfulVote = async (reviewId: string) => {
     if (!isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent(`/products/${product.id}`)}`);
+      router.push(`/login?redirect=${encodeURIComponent(`/products/${id}`)}`);
       return;
     }
 
+    const response = await fetch("/api/reviews/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewId, voteType: "helpful" }),
+    });
+
+    if (response.ok) {
+        const payload = await response.json();
+        setReviews(prev => prev.map(r => 
+            r.id === reviewId ? { ...r, helpful_count: payload.helpful_count } : r
+        ));
+    }
+  };
+
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setReviewFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const uploadMedia = async (): Promise<string[]> => {
+    if (reviewFiles.length === 0) return [];
+    setUploadingMedia(true);
+    const urls: string[] = [];
+
+    for (const file of reviewFiles) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `reviews/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (!uploadError) {
+        const { data } = supabase.storage.from('product-images').getPublicUrl(filePath);
+        if (data) urls.push(data.publicUrl);
+      }
+    }
+
+    setUploadingMedia(false);
+    return urls;
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(`/products/${id}`)}`);
+      return;
+    }
     setSubmittingReview(true);
-    setFeedback("");
+    setFeedback("Calculating weighted rating and uploading media...");
+
+    const uploadedUrls = await uploadMedia();
 
     const response = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        productId: product.id,
+        productId: product?.id,
         rating: reviewRating,
         title: reviewTitle,
         body: reviewBody,
+        mediaUrls: uploadedUrls,
       }),
     });
 
@@ -340,12 +414,36 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       return;
     }
 
-    setReviews((prev) => [payload.review, ...prev]);
     setReviewTitle("");
     setReviewBody("");
     setReviewRating(5);
+    setReviewFiles([]);
     setFeedback("Your review is now live on this product.");
     setSubmittingReview(false);
+    loadData();
+  };
+
+  const handleReportReview = async (reviewId: string) => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent(`/products/${id}`)}`);
+      return;
+    }
+
+    const reason = prompt("Please provide a reason for reporting this review:");
+    if (!reason) return;
+
+    const response = await fetch("/api/reviews/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewId, reason }),
+    });
+
+    if (response.ok) {
+      alert("Thank you. Our moderation team will review this content.");
+    } else {
+      const data = await response.json();
+      alert(data.error || "Unable to submit report.");
+    }
   };
 
   if (loading) {
@@ -443,7 +541,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
             <h1 className={styles.title}>{product.title}</h1>
-            <Stars rating={product.rating ?? averageRating} count={reviews.length} />
+            <Stars rating={product.avg_rating ?? product.rating ?? 4.7} count={product.review_count ?? reviews.length} />
 
             <div className={styles.priceBlock}>
               <span className={styles.priceSymbol}>{INR_SYMBOL}</span>
@@ -586,63 +684,198 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </section>
 
-        <section id="reviews" className={styles.aboutSection} style={{ marginTop: "2rem", marginBottom: "3rem" }}>
-          <h3 className={styles.aboutTitle}>Reviews and post-purchase feedback</h3>
-          <p className={styles.description} style={{ marginTop: "0.5rem" }}>
-            Reviews strengthen trust across Aura. Verified buyers can rate delivery quality, product accuracy, and seller communication.
-          </p>
+        <section id="reviews" className={styles.aboutSection} style={{ marginTop: "4rem", marginBottom: "3rem" }}>
+          <h2 className={styles.aboutTitle} style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>Customer reviews</h2>
+          
+          <div className={styles.reviewsLayout}>
+            <aside className={styles.reviewsSidebar}>
+              <ReviewDistribution 
+                distribution={product.rating_distribution || {"1":0,"2":0,"3":0,"4":0,"5":0}}
+                totalCount={product.review_count || 0}
+                averageRating={product.avg_rating || 4.7}
+              />
+              
+              <div className={styles.reviewThisProduct}>
+                <h3 className={styles.aboutTitle}>Review this product</h3>
+                <p className={styles.description}>Share your thoughts with other customers</p>
+                <button 
+                  className={styles.buyNowBtn} 
+                  style={{ marginTop: "1rem", width: "100%" }}
+                  onClick={() => {
+                    const form = document.getElementById('review-form');
+                    form?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Write a product review
+                </button>
+              </div>
+            </aside>
 
-          <form onSubmit={handleReviewSubmit} style={{ marginTop: "1.25rem", display: "grid", gap: "0.75rem" }}>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <label htmlFor="rating">Rating</label>
-              <select
-                id="rating"
-                className="input"
-                style={{ maxWidth: 120 }}
-                value={reviewRating}
-                onChange={(e) => setReviewRating(Number(e.target.value))}
-              >
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>
-                    {value} Star
-                  </option>
+            <div className={styles.reviewListSection}>
+              <div className={styles.reviewFilters}>
+                <select 
+                  className={styles.qtySelect}
+                  value={reviewSort}
+                  onChange={(e) => setReviewSort(e.target.value)}
+                >
+                  <option value="top">Top reviews</option>
+                  <option value="recent">Most recent</option>
+                  <option value="rating_high">Highest rating</option>
+                  <option value="rating_low">Lowest rating</option>
+                  <option value="verified">Verified purchases only</option>
+                </select>
+              </div>
+
+              <div className={styles.reviewsListItems}>
+                {reviews.length === 0 && (
+                  <div className={styles.guaranteeItem}>No reviews yet. Be the first to share your experience.</div>
+                )}
+                {reviews.map((review) => (
+                  <article key={review.id} className={styles.reviewItem}>
+                    <div className={styles.reviewerInfo}>
+                      <div className={styles.reviewerAvatar}>
+                        {review.profiles?.email?.charAt(0).toUpperCase() || 'A'}
+                      </div>
+                      <span className={styles.reviewerName}>
+                        {review.profiles?.email?.split('@')[0] || "Aura Customer"}
+                      </span>
+                    </div>
+                    
+                    <div className={styles.reviewRatingRow}>
+                      <Stars rating={review.rating} />
+                      <strong className={styles.reviewTitle}>{review.title || "Found it helpful"}</strong>
+                    </div>
+
+                    <div className={styles.reviewMeta}>
+                      {review.is_verified && (
+                        <span className={styles.verifiedBadge}>
+                          <CheckCircle2 size={12} /> Verified Purchase
+                        </span>
+                      )}
+                      <span className={styles.reviewDate}>
+                        Reviewed in India on {new Date(review.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                      </span>
+                    </div>
+
+                    {review.body && <p className={styles.reviewBodyText}>{review.body}</p>}
+                    
+                    {review.media_urls && review.media_urls.length > 0 && (
+                      <div className={styles.reviewMediaGallery}>
+                        {review.media_urls.map((url, i) => (
+                          <div key={i} className={styles.reviewMediaItem}>
+                            <Image src={url} alt="Review media" fill objectFit="cover" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className={styles.reviewActions}>
+                      <span className={styles.helpfulText}>
+                        {review.helpful_count > 0 ? `${review.helpful_count} people found this helpful` : "Was this review helpful?"}
+                      </span>
+                      <div className={styles.actionButtons}>
+                        <button 
+                          className={styles.helpfulBtn}
+                          onClick={() => handleHelpfulVote(review.id)}
+                        >
+                          Helpful
+                        </button>
+                        <span className={styles.actionSep}>|</span>
+                        <button 
+                          className={styles.reportBtn}
+                          onClick={() => handleReportReview(review.id)}
+                        >
+                          Report abuse
+                        </button>
+                      </div>
+                    </div>
+                  </article>
                 ))}
-              </select>
-            </div>
-            <input
-              className="input"
-              value={reviewTitle}
-              onChange={(e) => setReviewTitle(e.target.value)}
-              placeholder="Headline for your review"
-            />
-            <textarea
-              className="input"
-              value={reviewBody}
-              onChange={(e) => setReviewBody(e.target.value)}
-              rows={4}
-              placeholder="Share what went well and whether the listing matched the delivered product."
-            />
-            <div>
-              <button className={styles.buyNowBtn} type="submit" disabled={submittingReview}>
-                {submittingReview ? "Publishing..." : "Publish Review"}
-              </button>
-            </div>
-          </form>
+              </div>
 
-          <div style={{ display: "grid", gap: "1rem", marginTop: "1.5rem" }}>
-            {reviews.length === 0 && (
-              <div className={styles.guaranteeItem}>No reviews yet. The first review sets the trust signal for this listing.</div>
-            )}
-            {reviews.map((review) => (
-              <article key={review.id} className={styles.guaranteeItem} style={{ alignItems: "flex-start", flexDirection: "column" }}>
-                <Stars rating={review.rating} />
-                <strong>{review.title || "Verified customer review"}</strong>
-                {review.body && <p>{review.body}</p>}
-                <span className={styles.deliveryLine}>
-                  Posted {new Date(review.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
-              </article>
-            ))}
+              <div id="review-form" className={styles.reviewFormContainer}>
+                <h3 className={styles.aboutTitle}>Write a review</h3>
+                <form onSubmit={handleReviewSubmit} style={{ marginTop: "1.25rem", display: "grid", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <div className={styles.ratingInput}>
+                      <label>Overall rating</label>
+                      <div className={styles.starsInput}>
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <button
+                            type="button"
+                            key={s}
+                            onClick={() => setReviewRating(s)}
+                            className={clsx(styles.starBtn, { [styles.starBtnActive]: s <= reviewRating })}
+                          >
+                            <Star size={24} fill={s <= reviewRating ? "#f5b840" : "none"} color="#f5b840" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.formGroup}>
+                    <label>Add a headline</label>
+                    <input
+                      className="input"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      placeholder="What's most important to know?"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Add photos or video</label>
+                    <div className={styles.mediaUploadRow}>
+                        <label className={styles.mediaUploadBtn}>
+                            <Camera size={20} />
+                            <span>Add Media</span>
+                            <input 
+                                type="file" 
+                                accept="image/*,video/*" 
+                                multiple 
+                                style={{ display: "none" }} 
+                                onChange={handleMediaChange}
+                            />
+                        </label>
+                        <div className={styles.mediaPreviews}>
+                            {reviewFiles.map((file, i) => (
+                                <div key={i} className={styles.mediaPreviewThumb}>
+                                    <span>{file.name.slice(-10)}</span>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setReviewFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Add a written review</label>
+                    <textarea
+                      className="input"
+                      value={reviewBody}
+                      onChange={(e) => setReviewBody(e.target.value)}
+                      rows={5}
+                      placeholder="What did you like or dislike? What did you use this product for?"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formActions}>
+                    <button className={styles.buyNowBtn} type="submit" disabled={submittingReview || uploadingMedia}>
+                      {submittingReview ? (uploadingMedia ? "Uploading..." : "Submitting...") : "Submit"}
+                    </button>
+                    {feedback && <span className={styles.deliveryLine}>{feedback}</span>}
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </section>
       </div>

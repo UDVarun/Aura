@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingBag, BarChart2, LogOut, ChevronRight, Store, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, BarChart2, LogOut, ChevronRight, Store, MessageSquare, ArrowUpRight } from "lucide-react";
 import styles from "./layout.module.css";
 import { useAuth } from "@/context/AuthContext";
 import clsx from "clsx";
@@ -30,7 +30,7 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
         exact ? pathname === href : pathname.startsWith(href);
 
     return (
-        <div className={styles.shell}>
+        <div className={`${styles.shell} workspaceShell`}>
             <aside className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <div className={styles.brandGroup}>
@@ -69,7 +69,20 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
             </aside>
 
             <div className={styles.main}>
-                <div className={styles.content}>{children}</div>
+                <div className={styles.content}>
+                    <div className="workspaceTopbar">
+                        <div className="workspaceMeta">
+                            <span className="workspaceKicker">Vendor workspace</span>
+                            <h1 className="workspaceHeading">Operate your storefront with the same premium system.</h1>
+                            <p className="workspaceText">Inventory, orders, and communication now sit inside one cleaner workspace shell.</p>
+                        </div>
+                        <Link href="/" className="workspaceLink">
+                            View Storefront
+                            <ArrowUpRight size={16} />
+                        </Link>
+                    </div>
+                    {children}
+                </div>
             </div>
         </div>
     );

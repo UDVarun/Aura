@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createServerSupabase(request);
-        const { user } = await requireRole(supabase, ["customer"]);
+        const { user } = await requireRole(supabase, ["customer", "vendor", "admin"]);
         const payload = await request.json();
 
         if (!payload.productId || !payload.question) {
