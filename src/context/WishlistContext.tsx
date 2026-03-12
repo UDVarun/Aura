@@ -8,6 +8,7 @@ import { useRouter, usePathname } from "next/navigation";
 export type WishlistContextValue = {
     wishlistIds: string[];
     toggleWishlist: (productId: string) => Promise<void>;
+    removeFromWishlist: (productId: string) => Promise<void>;
     isInWishlist: (productId: string) => boolean;
     isLoading: boolean;
 };
@@ -71,22 +72,17 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             void supabase.removeChannel(channel);
         };
     }, [fetchWishlist, supabase, user]);
-
     const toggleWishlist = useCallback(
         async (productId: string) => {
             if (!isAuthenticated || !user) {
-                // Enforce wishlist restriction to logged-in users and redirect
                 router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
                 return;
             }
 
             const isCurrentlyLiked = wishlistIds.includes(productId);
 
-            // Optimistic UI update
             if (isCurrentlyLiked) {
                 setWishlistIds((prev) => prev.filter((id) => id !== productId));
-
-                // Remove from DB securely
                 await supabase
                     .from("wishlists")
                     .delete()
@@ -94,8 +90,6 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
                     .eq("product_id", productId);
             } else {
                 setWishlistIds((prev) => [...prev, productId]);
-
-                // Add to DB securely
                 await supabase
                     .from("wishlists")
                     .insert({
@@ -105,6 +99,20 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             }
         },
         [user, isAuthenticated, wishlistIds, supabase, router, pathname]
+    );
+
+    const removeFromWishlist = useCallback(
+        async (productId: string) => {
+            if (!user) return;
+            
+            setWishlistIds((prev) => prev.filter((id) => id !== productId));
+            await supabase
+                .from("wishlists")
+                .delete()
+                .eq("user_id", user.id)
+                .eq("product_id", productId);
+        },
+        [supabase, user]
     );
 
     const isInWishlist = useCallback(
@@ -118,10 +126,11 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         () => ({
             wishlistIds,
             toggleWishlist,
+            removeFromWishlist,
             isInWishlist,
             isLoading,
         }),
-        [wishlistIds, toggleWishlist, isInWishlist, isLoading]
+        [wishlistIds, toggleWishlist, removeFromWishlist, isInWishlist, isLoading]
     );
 
     return (

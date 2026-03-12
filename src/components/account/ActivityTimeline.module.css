@@ -1,0 +1,71 @@
+.container {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  gap: 1.5rem;
+  min-height: 80px;
+}
+
+.iconSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.iconCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  z-index: 1;
+}
+
+.connector {
+  width: 2px;
+  flex-grow: 1;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.content {
+  padding-bottom: 1.5rem;
+}
+
+.description {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  margin-bottom: 0.25rem;
+}
+
+.date {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 1rem;
+}

@@ -238,6 +238,7 @@ create table if not exists public.user_profiles (
   zip text,
   country text default 'India',
   upi_id text,
+  avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -388,10 +389,6 @@ create table if not exists public.review_votes (
 
 alter table public.review_votes enable row level security;
 
-create policy "Anyone can view review votes" on public.review_votes for select using (true);
-create policy "Authenticated users can vote" on public.review_votes for insert with check (auth.uid() = user_id);
-create policy "Users can delete own votes" on public.review_votes for delete using (auth.uid() = user_id);
-
 -- trigger function for product aggregates
 create or replace function public.update_product_review_aggregates()
 returns trigger
@@ -470,11 +467,6 @@ create table if not exists public.review_reports (
 
 alter table public.review_reports enable row level security;
 
-create policy "Admins can view reports" on public.review_reports for select using (
-  exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
-);
-create policy "Authenticated users can report" on public.review_reports for insert with check (auth.uid() = reporter_id);
-
 -- Enable Realtime for reviews and votes
 begin;
   drop publication if exists supabase_realtime;
@@ -539,10 +531,93 @@ create table if not exists public.support_case_messages (
 create index if not exists support_case_messages_case_id_idx on public.support_case_messages(case_id);
 
 -- =====================================================
+-- 13.1 USER ADDRESSES
+-- =====================================================
+create table if not exists public.user_addresses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  label text not null default 'Home',
+  recipient_name text not null,
+  phone text,
+  line1 text not null,
+  line2 text,
+  city text not null,
+  state text not null,
+  postal_code text not null,
+  country text not null default 'India',
+  is_default boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_addresses enable row level security;
+
+-- =====================================================
+-- 13.2 WISHLISTS
+-- =====================================================
+create table if not exists public.wishlists (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  product_id uuid not null references public.products(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, product_id)
+);
+
+alter table public.wishlists enable row level security;
+
+-- =====================================================
+-- 13.3 NOTIFICATIONS
+-- =====================================================
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text not null default 'info',
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+-- =====================================================
+-- 13.4 PAYMENT METHODS
+-- =====================================================
+create table if not exists public.payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null,
+  provider text,
+  last4 text,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.payment_methods enable row level security;
+
+-- =====================================================
+-- 13.5 ACCOUNT ACTIVITIES
+-- =====================================================
+create table if not exists public.account_activities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null,
+  description text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.account_activities enable row level security;
+
+-- =====================================================
 -- 14. STORAGE BUCKET
 -- =====================================================
 insert into storage.buckets (id, name, public)
 values ('product-images', 'product-images', true)
+on conflict (id) do update
+set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
 on conflict (id) do update
 set public = true;
 
@@ -621,6 +696,12 @@ drop policy if exists "Admins can manage all products" on public.products;
 drop policy if exists "Anyone can view product images" on public.product_images;
 drop policy if exists "Vendors can manage own product images" on public.product_images;
 drop policy if exists "Admins can manage all product images" on public.product_images;
+
+drop policy if exists "Users can manage own addresses" on public.user_addresses;
+drop policy if exists "Users can manage own wishlist" on public.wishlists;
+drop policy if exists "Users can manage own notifications" on public.notifications;
+drop policy if exists "Users can manage own payment methods" on public.payment_methods;
+drop policy if exists "Users can view own activities" on public.account_activities;
 
 drop policy if exists "Anyone can view review votes" on public.review_votes;
 drop policy if exists "Authenticated users can vote" on public.review_votes;
@@ -706,6 +787,38 @@ on public.user_profiles
 for all
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- =====================================================
+-- 19.1 ADDRESSES / WISHLIST / NOTIFICATIONS
+-- =====================================================
+create policy "Users can manage own addresses"
+on public.user_addresses
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Users can manage own wishlist"
+on public.wishlists
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Users can manage own notifications"
+on public.notifications
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Users can manage own payment methods"
+on public.payment_methods
+for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Users can view own activities"
+on public.account_activities
+for select
+using (auth.uid() = user_id);
 
 -- =====================================================
 -- 20. CART POLICIES
@@ -808,6 +921,34 @@ on public.product_reviews
 for all
 using (public.is_admin())
 with check (public.is_admin());
+
+-- =====================================================
+-- 22.1 REVIEW VOTES AND REPORTS
+-- =====================================================
+create policy "Anyone can view review votes"
+on public.review_votes
+for select
+using (true);
+
+create policy "Authenticated users can vote"
+on public.review_votes
+for insert
+with check (auth.uid() = user_id);
+
+create policy "Users can delete own votes"
+on public.review_votes
+for delete
+using (auth.uid() = user_id);
+
+create policy "Admins can view reports"
+on public.review_reports
+for select
+using (public.is_admin());
+
+create policy "Authenticated users can report"
+on public.review_reports
+for insert
+with check (auth.uid() = reporter_id);
 
 -- =====================================================
 -- 23. SUPPORT CASE POLICIES
