@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Search, Book, ArrowLeft } from "lucide-react";
 import styles from "./help-center.module.css";
 
-export default function HelpCenterPage() {
+function HelpCenterContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = searchParams.get("category") || "";
@@ -99,5 +99,13 @@ export default function HelpCenterPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function HelpCenterPage() {
+  return (
+    <Suspense fallback={<div className={styles.loading}>Loading Help Center...</div>}>
+      <HelpCenterContent />
+    </Suspense>
   );
 }
