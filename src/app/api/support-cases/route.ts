@@ -91,13 +91,26 @@ export async function POST(request: NextRequest) {
                 sender_id: user.id,
                 sender_role: "customer",
                 body: payload.description.trim(),
+                attachments: payload.evidenceUrls ?? []
             });
+
 
         if (messageError) {
             return NextResponse.json({ error: messageError.message }, { status: 400 });
         }
 
+        // Log initial activity
+        await supabase
+            .from("support_case_activities")
+            .insert({
+                case_id: supportCase.id,
+                type: "case_created",
+                message: `Case created by customer.`,
+                actor_id: user.id
+            });
+
         return NextResponse.json({ supportCase }, { status: 201 });
+
     } catch (error) {
         const message = error instanceof Error ? error.message : "Unable to create support case.";
         const status = message === "Authentication required" ? 401 : message === "Forbidden" ? 403 : 500;

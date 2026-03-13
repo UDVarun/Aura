@@ -1,0 +1,136 @@
+.page {
+  min-height: 100vh;
+  padding-top: calc(78px + 2rem);
+  padding-bottom: 5rem;
+}
+
+.header {
+  margin-bottom: 3rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #71717a;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  transition: color 0.2s ease;
+}
+
+.backLink:hover {
+  color: var(--primary);
+}
+
+.title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  letter-spacing: -0.01em;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 3rem;
+}
+
+.sidebar h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #71717a;
+  margin-bottom: 1.25rem;
+}
+
+.categoryList {
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.categoryList a {
+  display: block;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  color: #a1a1aa;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.categoryList a:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.activeCategory {
+  background: rgba(47, 111, 228, 0.1) !important;
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+.articleGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.articleCard {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  text-decoration: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.articleCard:hover {
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.articleIcon {
+  color: #71717a;
+  margin-right: 1.25rem;
+}
+
+.articleInfo {
+  flex: 1;
+}
+
+.articleInfo h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.25rem;
+}
+
+.articleInfo p {
+  font-size: 0.85rem;
+  color: #71717a;
+}
+
+.arrow {
+  color: #71717a;
+}
+
+.loading, .noResults {
+  padding: 4rem 2rem;
+  text-align: center;
+  background: #18181b;
+  border-radius: 16px;
+}
+
+.noResults h2 {
+  margin-bottom: 0.5rem;
+}
+
+.noResults p {
+  color: #71717a;
+}
+
+@media (max-width: 900px) {
+  .content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}

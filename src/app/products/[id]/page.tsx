@@ -22,6 +22,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
+import { recordViewedCategory, recordViewedProduct } from "@/lib/search-personalization";
 import ReviewDistribution from "@/components/reviews/ReviewDistribution";
 import { ThumbsUp, Camera, Video, CheckCircle2 } from "lucide-react";
 
@@ -274,6 +275,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
     // De-duplicate URLs
     return Array.from(new Set(list));
+  }, [product]);
+
+  useEffect(() => {
+    if (!product) {
+      return;
+    }
+
+    recordViewedProduct(product.title);
+    const categoryName = (Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name) ?? "Marketplace";
+    recordViewedCategory(categoryName);
   }, [product]);
 
   const averageRating = reviews.length === 0

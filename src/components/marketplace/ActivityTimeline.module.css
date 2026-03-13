@@ -1,0 +1,62 @@
+.timeline {
+    display: flex;
+    flex-direction: column;
+    padding-top: 0.5rem;
+}
+
+.item {
+    display: flex;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+}
+
+.marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.icon {
+    width: 28px;
+    height: 28px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    z-index: 1;
+}
+
+.line {
+    width: 2px;
+    flex-grow: 1;
+    background: var(--border);
+    margin: 0.25rem 0;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 0.25rem;
+}
+
+.message {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+.date {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.empty {
+    font-size: 0.85rem;
+    color: var(--muted);
+    padding: 1rem 0;
+}

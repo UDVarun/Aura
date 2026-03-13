@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, MessageSquare, ShieldCheck, Truck } from "lucide-react";
+import { AlertTriangle, MessageSquare, ShieldCheck, Truck, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { SupportInbox } from "@/components/marketplace/SupportInbox";
+import { SupportWorkspace } from "@/components/marketplace/SupportWorkspace";
+import { GuidedCaseCreation } from "@/components/marketplace/GuidedCaseCreation";
 import styles from "./page.module.css";
 
 type OrderSummary = {
@@ -40,6 +41,8 @@ const PILLARS = [
 export default function CustomerCarePage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -51,14 +54,21 @@ export default function CustomerCarePage() {
       });
   }, [isAuthenticated]);
 
-  const orderOptions = useMemo(
-    () =>
-      orders.map((order) => ({
-        id: order.id,
-        label: `${order.order_number} • ${order.status} • ${new Date(order.placed_at).toLocaleDateString("en-IN")}`,
-      })),
-    [orders]
-  );
+  const handleCreateCase = async (formData: any) => {
+    try {
+      const res = await fetch("/api/support-cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setIsCreating(false);
+        setRefreshKey(prev => prev + 1); // Trigger refresh in workspace
+      }
+    } catch (err) {
+      console.error("Failed to create case:", err);
+    }
+  };
 
   return (
     <main className={styles.page}>
@@ -89,11 +99,11 @@ export default function CustomerCarePage() {
         </div>
       </section>
 
-      <section className={`container ${styles.mainSection}`}>
+      <section className={styles.mainSection}>
         {isLoading ? (
-          <div className={styles.formCard}>Loading your support workspace...</div>
+          <div className={`container ${styles.formCard}`}>Loading your support workspace...</div>
         ) : !isAuthenticated ? (
-          <div className={styles.formCard}>
+          <div className={`container ${styles.formCard}`}>
             <h2>Sign in to manage cases</h2>
             <p className={styles.formHint}>
               Once signed in, you can report product issues, request refunds, escalate fraudulent sellers, and continue case conversations with vendors or admin.
@@ -102,14 +112,34 @@ export default function CustomerCarePage() {
               Go to Sign In
             </Link>
           </div>
+        ) : isCreating ? (
+          <div className="container">
+            <GuidedCaseCreation 
+              orders={orders} 
+              onCancel={() => setIsCreating(false)} 
+              onCreate={handleCreateCase}
+            />
+          </div>
         ) : (
-          <SupportInbox
-            role="customer"
-            title="Your support cases"
-            subtitle="Open a new dispute or continue an existing case with the seller and Aura admin."
-            allowCreate
-            orderOptions={orderOptions}
-          />
+          <div className={styles.workspaceContainer}>
+            <div className={`container ${styles.workspaceHeader}`}>
+                <div className="flex-between">
+                    <div>
+                        <h2 className={styles.sectionTitle}>Your support cases</h2>
+                        <p className={styles.sectionSubtitle}>Continue an existing case or open a new dispute with the seller.</p>
+                    </div>
+                    <button className="btn btn-primary" onClick={() => setIsCreating(true)}>
+                        <Plus size={18} /> New Case
+                    </button>
+                </div>
+            </div>
+            <SupportWorkspace
+                key={refreshKey}
+                role="customer"
+                title="Your support cases"
+                subtitle="Open a new dispute or continue an existing case with the seller and Aura admin."
+            />
+          </div>
         )}
       </section>
     </main>

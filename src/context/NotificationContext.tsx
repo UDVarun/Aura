@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 
-export type NotificationType = "info" | "success" | "warning" | "order_update";
+export type NotificationType = "info" | "success" | "warning" | "order_update" | "support";
 
 export type Notification = {
   id: string;

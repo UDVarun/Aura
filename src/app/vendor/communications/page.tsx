@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { SupportInbox } from "@/components/marketplace/SupportInbox";
+import { SupportWorkspace } from "@/components/marketplace/SupportWorkspace";
 import { useAuth } from "@/context/AuthContext";
 import { useVendor } from "@/context/VendorContext";
 import { Stars } from "@/components/marketplace/Stars";
@@ -127,7 +127,7 @@ export default function VendorCommunicationsPage() {
                 {feedback && <p className={styles.feedback}>{feedback}</p>}
             </section>
 
-            <SupportInbox
+            <SupportWorkspace
                 role="vendor"
                 title="Support cases assigned to your store"
                 subtitle="Resolve order issues, reply with evidence, and keep the customer updated inside Aura."

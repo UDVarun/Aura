@@ -117,8 +117,9 @@
   margin: 0;
   padding: 0 clamp(0.85rem, 2.4vw, 2.8rem);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: clamp(0.55rem, 0.95vw, 0.85rem);
   height: 100%;
 }
 
@@ -126,8 +127,10 @@
 .logoContainer {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 0.85rem;
+  margin-right: clamp(1.5rem, 2.8vw, 2.4rem);
+  flex: 0 0 auto;
+  min-width: max-content;
 }
 
 .logo {
@@ -155,10 +158,11 @@
 .desktopNav {
   display: none;
   align-items: center;
-  justify-content: center;
-  gap: 1.8rem;
-  flex: 2;
-  /* Take up more space in center */
+  justify-content: flex-start;
+  gap: clamp(1rem, 1.4vw, 1.45rem);
+  margin-right: clamp(0.9rem, 1.8vw, 1.45rem);
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 @media (min-width: 1180px) {
@@ -169,8 +173,11 @@
 
 .navLink {
   position: relative;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.85rem;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #a1a1aa;
@@ -230,7 +237,7 @@
 .globalSearch {
   display: none;
   width: 100%;
-  max-width: 380px;
+  max-width: none;
 }
 
 @media (min-width: 860px) {
@@ -273,7 +280,7 @@
 .searchInput {
   width: 100%;
   height: 42px;
-  padding: 0 2.5rem 0 1.25rem;
+  padding: 0 4.75rem 0 1.25rem;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   background: linear-gradient(145deg, color-mix(in srgb, var(--surface-1) 96%, transparent), color-mix(in srgb, var(--surface-2) 84%, transparent));
@@ -303,12 +310,37 @@
   color: var(--primary);
 }
 
+.clearSearchButton {
+  position: absolute;
+  right: 2.55rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.clearSearchButton:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  transform: scale(1.04);
+}
+
 /* ── Actions ──────────────────────────────────────────────── */
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.34rem;
-  padding: 0.2rem;
+  justify-content: flex-end;
+  gap: 0.38rem;
+  padding: 0.18rem;
+  margin-left: auto;
+  flex: 0 0 auto;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
   background: linear-gradient(145deg, color-mix(in srgb, var(--surface-1) 94%, transparent), color-mix(in srgb, var(--surface-2) 76%, transparent));
@@ -587,6 +619,10 @@
   margin-bottom: 1.5rem;
 }
 
+.mobileSearchShell {
+  position: relative;
+}
+
 .mobileSearch .searchIcon {
   right: 1.25rem;
   left: auto;
@@ -595,7 +631,7 @@
 .mobileSearchInput {
   width: 100%;
   height: 48px;
-  padding: 0 3rem 0 1.5rem;
+  padding: 0 4.75rem 0 1.5rem;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
@@ -611,6 +647,36 @@
   outline: none;
   border-color: var(--primary);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.mobileClearSearchButton {
+  position: absolute;
+  right: 2.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4d4d8;
+  cursor: pointer;
+}
+
+.mobileSearchLoader {
+  position: absolute;
+  right: 4.95rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .mobileNavLink {
@@ -692,16 +758,30 @@
 
 @media (max-width: 1179px) {
   .navContainer {
-    gap: 0.85rem;
+    display: flex;
+    gap: 0.65rem;
   }
 
   .logoContainer {
     flex: 0 0 auto;
+    margin-right: 0.7rem;
   }
 
   .globalSearch {
     flex: 1;
     max-width: none;
+  }
+
+  .searchWrapper {
+    flex: 1 1 auto;
+    max-width: none;
+    width: auto;
+    margin-left: 0.4rem;
+    margin-right: 0.4rem;
+  }
+
+  .actions {
+    margin-left: auto;
   }
 }
 
@@ -865,4 +945,304 @@
 
 [data-theme="light"] .mobileNavDivider {
   background: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Search Recommendations ──────────────────────────────── */
+.searchWrapper {
+  position: relative;
+  flex: 1 1 28rem;
+  min-width: 0;
+  width: 100%;
+  max-width: clamp(34rem, 50vw, 54rem);
+  margin-right: 0.55rem;
+  display: none;
+}
+
+@media (min-width: 860px) {
+  .searchWrapper {
+    display: block;
+    margin-left: 0;
+  }
+}
+
+.suggestionsDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: rgba(17, 17, 19, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  overflow: hidden;
+  animation: slideDownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mobileSuggestionsDropdown {
+  position: relative;
+  top: 0;
+  margin-top: -0.35rem;
+  border-radius: 16px;
+  max-height: min(60vh, 34rem);
+}
+
+.suggestionSection {
+  padding: 0.75rem 0;
+}
+
+.suggestionSection + .suggestionSection {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suggestionSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 1rem 0.65rem;
+}
+
+.suggestionTitle {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #71717a;
+  font-weight: 800;
+}
+
+.inlineAction {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.suggestionSectionBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.simpleSuggestionShell,
+.simpleSuggestion,
+.productSuggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.simpleSuggestionShell {
+  padding-right: 0.6rem;
+}
+
+.simpleSuggestion,
+.productSuggestion {
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+}
+
+.simpleSuggestionShell:hover,
+.simpleSuggestionActive,
+.productSuggestion:hover,
+.productSuggestionActive {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.removeRecentButton {
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8b8b96;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.removeRecentButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.simpleSuggestionIcon {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #d4d4d8;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.simpleSuggestionText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.simpleSuggestionLabel {
+  font-size: 0.88rem;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.simpleSuggestionMeta {
+  font-size: 0.75rem;
+  color: #8b8b96;
+}
+
+.suggestionThumb {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1a1a1c;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suggestionInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestionName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestionMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
+
+.suggestionPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4d4d8;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.suggestionBrand {
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.suggestionPrice {
+  flex-shrink: 0;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.productPreviewMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: #8b8b96;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.productSuggestion:hover .productPreviewMeta,
+.productSuggestionActive .productPreviewMeta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.previewDivider {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.previewRating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.highlight {
+  background: rgba(47, 111, 228, 0.2);
+  color: #ffffff;
+  padding: 0 0.08rem;
+  border-radius: 0.22rem;
+}
+
+.noResults {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #71717a;
+  font-size: 0.85rem;
+}
+
+.searchLoader {
+  position: absolute;
+  right: 2.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 859px) {
+  .mobileSuggestionsDropdown {
+    max-height: min(56vh, 32rem);
+    overflow-y: auto;
+  }
+
+  .simpleSuggestion,
+  .productSuggestion {
+    padding: 0.95rem 1rem;
+  }
+
+  .productPreviewMeta {
+    opacity: 1;
+    transform: translateY(0);
+    flex-wrap: wrap;
+  }
+
+  .suggestionPrice {
+    display: none;
+  }
 }

@@ -468,13 +468,6 @@ create table if not exists public.review_reports (
 alter table public.review_reports enable row level security;
 
 -- Enable Realtime for reviews and votes
-begin;
-  drop publication if exists supabase_realtime;
-  create publication supabase_realtime;
-commit;
-alter publication supabase_realtime add table public.product_reviews;
-alter publication supabase_realtime add table public.review_votes;
-alter publication supabase_realtime add table public.products; -- For live rating updates
 
 create index if not exists product_reviews_product_id_idx on public.product_reviews(product_id);
 
@@ -505,8 +498,24 @@ create table if not exists public.support_cases (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint support_cases_priority_check check (priority in ('low', 'normal', 'high', 'urgent')),
-  constraint support_cases_status_check check (status in ('open', 'waiting_for_vendor', 'waiting_for_customer', 'escalated', 'resolved', 'closed'))
+  constraint support_cases_status_check check (status in ('open', 'waiting_for_vendor', 'waiting_for_customer', 'under_review', 'escalated', 'resolved', 'closed'))
 );
+
+-- =====================================================
+-- 13.0.1 SUPPORT CASE ACTIVITIES (Timeline)
+-- =====================================================
+create table if not exists public.support_case_activities (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references public.support_cases(id) on delete cascade,
+  type text not null,
+  message text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists support_case_activities_case_id_idx on public.support_case_activities(case_id);
+alter table public.support_case_activities enable row level security;
+
 
 create index if not exists support_cases_customer_id_idx on public.support_cases(customer_id);
 create index if not exists support_cases_vendor_id_idx on public.support_cases(vendor_id);
@@ -523,6 +532,7 @@ create table if not exists public.support_case_messages (
   sender_id uuid not null references public.profiles(id) on delete cascade,
   sender_role text not null,
   body text not null,
+  attachments jsonb not null default '[]'::jsonb,
   is_internal boolean not null default false,
   created_at timestamptz not null default now(),
   constraint support_case_messages_sender_role_check check (sender_role in ('customer', 'vendor', 'admin'))
@@ -609,6 +619,96 @@ create table if not exists public.account_activities (
 alter table public.account_activities enable row level security;
 
 -- =====================================================
+-- 13.6 KNOWLEDGE BASE (SUPPORT ARTICLES)
+-- =====================================================
+create table if not exists public.support_articles (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text not null unique,
+  content text not null,
+  category text not null,
+  tags text[] default '{}',
+  is_published boolean not null default true,
+  view_count integer not null default 0,
+  helpful_count integer not null default 0,
+  unhelpful_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Full-text search index for search functionality
+alter table public.support_articles add column if not exists fts tsvector generated always as (to_tsvector('english', title || ' ' || content || ' ' || category)) stored;
+create index if not exists support_articles_fts_idx on public.support_articles using gin(fts);
+
+alter table public.support_articles enable row level security;
+
+-- =====================================================
+-- 13.7 SUPPORT FEEDBACK (CSAT)
+-- =====================================================
+create table if not exists public.support_feedback (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references public.support_cases(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  rating integer not null check (rating between 1 and 5),
+  comment text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.support_feedback enable row level security;
+
+-- =====================================================
+-- 13.8 VENDOR DISPUTES / CASES
+-- =====================================================
+create table if not exists public.vendor_cases (
+  id uuid primary key default gen_random_uuid(),
+  case_id uuid not null references public.support_cases(id) on delete cascade,
+  vendor_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending',
+  vendor_response text,
+  responded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint vendor_cases_status_check check (status in ('pending', 'responded', 'escalated', 'resolved'))
+);
+
+alter table public.vendor_cases enable row level security;
+
+-- =====================================================
+-- 13.9 SUPPORT AGENTS
+-- =====================================================
+create table if not exists public.support_agents (
+  id uuid primary key references public.profiles(id) on delete cascade,
+  full_name text not null,
+  status text not null default 'offline', -- online, busy, offline
+  active_cases_count integer not null default 0,
+  max_cases_capacity integer not null default 10,
+  rating numeric(3,2) default 5.0,
+  last_assigned_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint support_agents_status_check check (status in ('online', 'busy', 'offline'))
+);
+
+alter table public.support_agents enable row level security;
+
+-- =====================================================
+-- 13.10 SUPPORT CONVERSATIONS (LIVE CHAT)
+-- =====================================================
+create table if not exists public.support_conversations (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.profiles(id) on delete cascade,
+  agent_id uuid references public.support_agents(id) on delete set null,
+  status text not null default 'active', -- active, closed, pending_ai, waiting_agent
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint support_conversations_status_check check (status in ('active', 'closed', 'pending_ai', 'waiting_agent'))
+);
+
+alter table public.support_conversations enable row level security;
+
+
+-- =====================================================
 -- 14. STORAGE BUCKET
 -- =====================================================
 insert into storage.buckets (id, name, public)
@@ -618,6 +718,11 @@ set public = true;
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
+on conflict (id) do update
+set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('support-evidence', 'support-evidence', true)
 on conflict (id) do update
 set public = true;
 
@@ -684,6 +789,8 @@ drop policy if exists "Vendors and admins can update support cases" on public.su
 drop policy if exists "Participants can view case messages" on public.support_case_messages;
 drop policy if exists "Participants can create case messages" on public.support_case_messages;
 
+drop policy if exists "Participants can view case activities" on public.support_case_activities;
+
 drop policy if exists "Anyone can view categories" on public.categories;
 drop policy if exists "Admins can manage categories" on public.categories;
 
@@ -714,6 +821,35 @@ drop policy if exists "Public can view product images" on storage.objects;
 drop policy if exists "Authenticated users can upload product images" on storage.objects;
 drop policy if exists "Authenticated users can update product images" on storage.objects;
 drop policy if exists "Authenticated users can delete product images" on storage.objects;
+
+-- Support ecosystem drops
+drop policy if exists "Anyone can view published articles" on public.support_articles;
+drop policy if exists "Admins can manage articles" on public.support_articles;
+drop policy if exists "Customers can manage own feedback" on public.support_feedback;
+drop policy if exists "Admins can view feedback" on public.support_feedback;
+drop policy if exists "Vendors can view own cases" on public.vendor_cases;
+drop policy if exists "Vendors can update own cases" on public.vendor_cases;
+drop policy if exists "Admins can manage vendor cases" on public.vendor_cases;
+drop policy if exists "Users can view own conversations" on public.support_conversations;
+drop policy if exists "Agents can manage conversations" on public.support_conversations;
+
+-- Support Agent drops
+drop policy if exists "Everyone can view online agents" on public.support_agents;
+drop policy if exists "Admins can manage agents" on public.support_agents;
+
+-- Support Case drops
+drop policy if exists "Participants can view support cases" on public.support_cases;
+drop policy if exists "Customers can create support cases" on public.support_cases;
+drop policy if exists "Vendors and admins can update support cases" on public.support_cases;
+drop policy if exists "Participants can view case messages" on public.support_case_messages;
+drop policy if exists "Participants can create case messages" on public.support_case_messages;
+drop policy if exists "Participants can view case activities" on public.support_case_activities;
+
+-- Storage drops
+drop policy if exists "Public can view support evidence" on storage.objects;
+drop policy if exists "Authenticated users can upload support evidence" on storage.objects;
+drop policy if exists "Public can view avatars" on storage.objects;
+drop policy if exists "Authenticated users can upload avatars" on storage.objects;
 
 -- =====================================================
 -- 17. PROFILES POLICIES
@@ -773,6 +909,122 @@ on public.vendors
 for update
 using (public.is_admin())
 with check (public.is_admin());
+
+-- =====================================================
+-- 19. SUPPORT ECOSYSTEM POLICIES
+-- =====================================================
+
+-- Support Articles (KB)
+create policy "Anyone can view published articles"
+on public.support_articles for select
+using (is_published = true);
+
+create policy "Admins can manage articles"
+on public.support_articles for all
+using (public.is_admin())
+with check (public.is_admin());
+
+-- Support Feedback (CSAT)
+create policy "Customers can manage own feedback"
+on public.support_feedback for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "Admins can view feedback"
+on public.support_feedback for select
+using (public.is_admin());
+
+-- Vendor Cases
+create policy "Vendors can view own cases"
+on public.vendor_cases for select
+using (auth.uid() = vendor_id);
+
+create policy "Vendors can update own cases"
+on public.vendor_cases for update
+using (auth.uid() = vendor_id)
+with check (auth.uid() = vendor_id);
+
+create policy "Admins can manage vendor cases"
+on public.vendor_cases for all
+using (public.is_admin())
+with check (public.is_admin());
+
+-- Support Conversations
+create policy "Users can view own conversations"
+on public.support_conversations for select
+using (auth.uid() = customer_id);
+
+create policy "Agents can manage conversations"
+on public.support_conversations for all
+using (public.is_admin() or auth.uid() = agent_id);
+
+-- Support Agents
+create policy "Everyone can view online agents"
+on public.support_agents for select
+using (true);
+
+create policy "Admins can manage agents"
+on public.support_agents for all
+using (public.is_admin())
+with check (public.is_admin());
+
+-- Support Cases
+create policy "Participants can view support cases"
+on public.support_cases for select
+using (auth.uid() = customer_id or auth.uid() = vendor_id or public.is_admin());
+
+create policy "Customers can create support cases"
+on public.support_cases for insert
+with check (auth.uid() = customer_id);
+
+create policy "Vendors and admins can update support cases"
+on public.support_cases for update
+using (auth.uid() = vendor_id or public.is_admin())
+with check (auth.uid() = vendor_id or public.is_admin());
+
+-- Support Case Messages
+create policy "Participants can view case messages"
+on public.support_case_messages for select
+using (
+  exists (
+    select 1 from public.support_cases
+    where id = support_case_messages.case_id
+    and (customer_id = auth.uid() or vendor_id = auth.uid() or public.is_admin())
+  )
+);
+
+create policy "Participants can create case messages"
+on public.support_case_messages for insert
+with check (
+  exists (
+    select 1 from public.support_cases
+    where id = support_case_messages.case_id
+    and (customer_id = auth.uid() or vendor_id = auth.uid() or public.is_admin())
+  )
+);
+
+-- Support Case Activities
+create policy "Participants can view case activities"
+on public.support_case_activities for select
+using (
+  exists (
+    select 1 from public.support_cases
+    where id = support_case_activities.case_id
+    and (customer_id = auth.uid() or vendor_id = auth.uid() or public.is_admin())
+  )
+);
+
+-- =====================================================
+-- 20. SEED DATA: SUPPORT ARTICLES
+-- =====================================================
+insert into public.support_articles (title, slug, content, category, tags)
+values
+  ('How to Track Your Order', 'track-order', 'You can track your order by visiting the Accounts page and clicking on the Orders tab. Each order-item provides live shipment updates and tracking numbers where available.', 'Shipping', '{shipping, tracking, orders}'),
+  ('Return and Refund Policy', 'return-refund-policy', 'Aura provides a trust-backed return policy. If an item is damaged or not as described, you can open a support case through the Customer Care workspace within 7 days of delivery.', 'Refunds', '{refunds, returns, policy}'),
+  ('Contacting a Seller', 'contact-seller', 'For product-specific questions, use the "Ask a Question" feature on the product page. For order issues, open a support case which will notify the vendor directly.', 'Communication', '{vendors, contact, help}'),
+  ('Aura Protection for Customers', 'aura-protection', 'Our protection plan ensures that your payments are held securely until delivery is confirmed. We moderate disputes to ensure both customers and vendors are treated fairly.', 'Security', '{security, trust, protection}')
+on conflict (slug) do nothing;
+
 
 -- =====================================================
 -- 19. USER PROFILE POLICIES
@@ -950,72 +1202,6 @@ on public.review_reports
 for insert
 with check (auth.uid() = reporter_id);
 
--- =====================================================
--- 23. SUPPORT CASE POLICIES
--- =====================================================
-create policy "Participants can view support cases"
-on public.support_cases
-for select
-using (
-  auth.uid() = customer_id
-  or auth.uid() = vendor_id
-  or auth.uid() = assigned_admin_id
-  or public.is_admin()
-);
-
-create policy "Customers can create support cases"
-on public.support_cases
-for insert
-with check (auth.uid() = customer_id);
-
-create policy "Vendors and admins can update support cases"
-on public.support_cases
-for update
-using (
-  auth.uid() = vendor_id
-  or auth.uid() = customer_id
-  or public.is_admin()
-)
-with check (
-  auth.uid() = vendor_id
-  or auth.uid() = customer_id
-  or public.is_admin()
-);
-
-create policy "Participants can view case messages"
-on public.support_case_messages
-for select
-using (
-  exists (
-    select 1
-    from public.support_cases
-    where support_cases.id = support_case_messages.case_id
-      and (
-        support_cases.customer_id = auth.uid()
-        or support_cases.vendor_id = auth.uid()
-        or support_cases.assigned_admin_id = auth.uid()
-        or public.is_admin()
-      )
-  )
-);
-
-create policy "Participants can create case messages"
-on public.support_case_messages
-for insert
-with check (
-  auth.uid() = sender_id
-  and exists (
-    select 1
-    from public.support_cases
-    where support_cases.id = support_case_messages.case_id
-      and (
-        support_cases.customer_id = auth.uid()
-        or support_cases.vendor_id = auth.uid()
-        or support_cases.assigned_admin_id = auth.uid()
-        or public.is_admin()
-      )
-  )
-);
 
 -- =====================================================
 -- 24. CATEGORY POLICIES
@@ -1129,11 +1315,58 @@ using (
   and auth.role() = 'authenticated'
 );
 
+-- Support Evidence Policies
+create policy "Public can view support evidence"
+on storage.objects for select
+using (bucket_id = 'support-evidence');
+
+create policy "Authenticated users can upload support evidence"
+on storage.objects for insert
+with check (
+  bucket_id = 'support-evidence'
+  and auth.role() = 'authenticated'
+);
+
+-- Avatar Policies
+create policy "Public can view avatars"
+on storage.objects for select
+using (bucket_id = 'avatars');
+
+create policy "Authenticated users can upload avatars"
+on storage.objects for insert
+with check (
+  bucket_id = 'avatars'
+  and auth.role() = 'authenticated'
+);
+
 -- =====================================================
 -- ADMIN PROMOTION (Helper)
 -- =====================================================
-UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}' WHERE id = '79e52fca-a987-4375-ae0f-36982029484a';
-INSERT INTO public.profiles (id, email, role) VALUES ('79e52fca-a987-4375-ae0f-36982029484a', 'varunud96@gmail.com', 'admin') ON CONFLICT (id) DO UPDATE SET role = 'admin';
+do $$
+begin
+  -- Update auth.users metadata
+  update auth.users 
+  set raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}' 
+  where email = 'varunud96@gmail.com';
+
+  -- Update public.profiles role
+  update public.profiles 
+  set role = 'admin' 
+  where email = 'varunud96@gmail.com';
+end $$;
+
+-- =====================================================
+-- 26. ENABLE REALTIME
+-- =====================================================
+begin;
+  drop publication if exists supabase_realtime;
+  create publication supabase_realtime;
+commit;
+alter publication supabase_realtime add table public.product_reviews;
+alter publication supabase_realtime add table public.review_votes;
+alter publication supabase_realtime add table public.products;
+alter publication supabase_realtime add table public.support_case_messages;
+alter publication supabase_realtime add table public.support_conversations;
 
 -- =====================================================
 -- 27. VERIFY

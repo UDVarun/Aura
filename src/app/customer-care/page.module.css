@@ -96,10 +96,18 @@
   margin-top: 2.4rem;
 }
 
-.sectionTitle {
-  font-size: clamp(1.3rem, 2.4vw, 1.8rem);
-  letter-spacing: -0.02em;
-  margin-bottom: 1rem;
+.workspaceHeader {
+  margin-bottom: 1.5rem;
+}
+
+.workspaceContainer {
+  margin-top: 2rem;
+}
+
+.sectionSubtitle {
+  color: var(--muted-light);
+  font-size: var(--text-base);
+  margin-top: 0.25rem;
 }
 
 .grid {

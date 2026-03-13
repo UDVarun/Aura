@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 import { formatCurrency, INR_SYMBOL, parsePriceValue } from "@/lib/currency";
 import { ProductCard, Product } from "@/components/ui/ProductCard";
+import { recordViewedCategory } from "@/lib/search-personalization";
 
 // Branded categories for quick filtering
 const BRANDS_FALLBACK = ["Apple", "Logitech", "Sony", "Dell", "Aura", "Generic"];
@@ -82,6 +83,31 @@ function ProductsContent() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [priceFilter, setPriceFilter] = useState<PriceFilterOption>("all");
   const [qualityFilter, setQualityFilter] = useState<"all" | "elite" | "premium" | "standard">("all");
+
+  const resetLocalFilters = () => {
+    setSelectedBrands([]);
+    setPriceFilter("all");
+    setQualityFilter("all");
+    setIsFilterOpen(false);
+  };
+
+  const clearSearchFromFilters = (nextCategory?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("q");
+
+    if (nextCategory === undefined) {
+      if (params.get("category") === "all") {
+        params.delete("category");
+      }
+    } else if (nextCategory === "all") {
+      params.delete("category");
+    } else {
+      params.set("category", nextCategory);
+    }
+
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+    window.dispatchEvent(new CustomEvent("aura:search-reset"));
+  };
 
   useEffect(() => {
     let active = true;
@@ -199,12 +225,26 @@ function ProductsContent() {
       };
     }, [supabase]);
 
+  useEffect(() => {
+    const handleSearchReset = () => {
+      resetLocalFilters();
+    };
+
+    window.addEventListener("aura:search-reset", handleSearchReset);
+    return () => window.removeEventListener("aura:search-reset", handleSearchReset);
+  }, []);
+
   const toggleBrand = (brand: string) => {
+    if (searchQueryFromUrl) {
+      clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory);
+    }
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]));
   };
 
   const handleCategoryChange = (categorySlug: string) => {
+    recordViewedCategory(categorySlug === "all" ? "All Products" : categorySlug);
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("q");
     if (categorySlug === "all") {
       params.delete("category");
     } else {
@@ -280,7 +320,12 @@ function ProductsContent() {
               <button
                 type="button"
                 className={styles.filterIconButton}
-                onClick={() => setIsFilterOpen((v) => !v)}
+                onClick={() => {
+                  if (searchQueryFromUrl) {
+                    clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory);
+                  }
+                  setIsFilterOpen((v) => !v);
+                }}
                 aria-expanded={isFilterOpen}
                 aria-controls="shop-filter-panel"
               >
@@ -321,20 +366,20 @@ function ProductsContent() {
                   <div className={styles.filterGroup}>
                     <h4>Price</h4>
                     <div className={styles.filterChipRow}>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "all" })} onClick={() => setPriceFilter("all")}>All</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "under5000" })} onClick={() => setPriceFilter("under5000")}>Under {formatShortCurrency(5000)}</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "5000to15000" })} onClick={() => setPriceFilter("5000to15000")}>{formatShortCurrency(5000)}-{formatShortCurrency(15000)}</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "above15000" })} onClick={() => setPriceFilter("above15000")}>{formatShortCurrency(15000)}+</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "all" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setPriceFilter("all"); }}>All</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "under5000" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setPriceFilter("under5000"); }}>Under {formatShortCurrency(5000)}</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "5000to15000" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setPriceFilter("5000to15000"); }}>{formatShortCurrency(5000)}-{formatShortCurrency(15000)}</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: priceFilter === "above15000" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setPriceFilter("above15000"); }}>{formatShortCurrency(15000)}+</button>
                     </div>
                   </div>
 
                   <div className={styles.filterGroup}>
                     <h4>Quality</h4>
                     <div className={styles.filterChipRow}>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "all" })} onClick={() => setQualityFilter("all")}>All</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "elite" })} onClick={() => setQualityFilter("elite")}>Elite</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "premium" })} onClick={() => setQualityFilter("premium")}>Premium</button>
-                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "standard" })} onClick={() => setQualityFilter("standard")}>Standard</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "all" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setQualityFilter("all"); }}>All</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "elite" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setQualityFilter("elite"); }}>Elite</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "premium" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setQualityFilter("premium"); }}>Premium</button>
+                      <button type="button" className={clsx(styles.filterChip, { [styles.filterChipActive]: qualityFilter === "standard" })} onClick={() => { if (searchQueryFromUrl) clearSearchFromFilters(selectedCategory === "all" ? "all" : selectedCategory); setQualityFilter("standard"); }}>Standard</button>
                     </div>
                   </div>
                 </div>

@@ -59,6 +59,47 @@ export async function POST(
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
 
+        // Log Activity
+        await supabase
+            .from("support_case_activities")
+            .insert({
+                case_id: id,
+                type: "message_sent",
+                message: `${role.charAt(0).toUpperCase() + role.slice(1)} sent a message.`,
+                actor_id: user.id
+            });
+
+        // Determine recipient and send notification
+        const { data: caseData } = await supabase
+            .from("support_cases")
+            .select("customer_id, vendor_id, assigned_admin_id, case_number")
+            .eq("id", id)
+            .single();
+
+        if (caseData) {
+            const recipients = [];
+            if (role === "customer") {
+                if (caseData.vendor_id) recipients.push(caseData.vendor_id);
+                if (caseData.assigned_admin_id) recipients.push(caseData.assigned_admin_id);
+            } else if (role === "vendor") {
+                recipients.push(caseData.customer_id);
+                if (caseData.assigned_admin_id) recipients.push(caseData.assigned_admin_id);
+            } else if (role === "admin") {
+                recipients.push(caseData.customer_id);
+                if (caseData.vendor_id) recipients.push(caseData.vendor_id);
+            }
+
+            if (recipients.length > 0) {
+                const notifications = recipients.map(uid => ({
+                    user_id: uid,
+                    title: `New message in Case ${caseData.case_number}`,
+                    message: `${role.charAt(0).toUpperCase() + role.slice(1)} replied to your support case.`,
+                    type: "support"
+                }));
+                await supabase.from("notifications").insert(notifications);
+            }
+        }
+
         await supabase
             .from("support_cases")
             .update({
@@ -66,6 +107,8 @@ export async function POST(
                 status: role === "customer" ? "waiting_for_vendor" : role === "vendor" ? "waiting_for_customer" : payload.status ?? "open",
             })
             .eq("id", id);
+
+
 
         return NextResponse.json({ message: data }, { status: 201 });
     } catch (error) {

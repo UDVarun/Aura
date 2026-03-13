@@ -1,0 +1,474 @@
+.section {
+  position: relative;
+}
+
+.sectionShell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 12%, transparent), transparent 34%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--accent) 12%, transparent), transparent 32%),
+    var(--panel-bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.sectionShell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--backdrop-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--backdrop-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.sectionContent {
+  position: relative;
+  z-index: 1;
+  padding: clamp(1.5rem, 3vw, 2rem);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 46rem;
+  margin-bottom: clamp(1.75rem, 3vw, 2.5rem);
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  letter-spacing: -0.04em;
+}
+
+.sectionLead {
+  max-width: 40rem;
+  color: var(--text-muted);
+  font-size: clamp(1rem, 2.6vw, 1.15rem);
+}
+
+.heroGrid {
+  display: grid;
+  gap: clamp(1.2rem, 2.8vw, 2rem);
+  min-height: 100%;
+}
+
+.heroSection {
+  height: calc(100svh - 64px - (var(--about-hero-gap, 0.55rem) * 2));
+  min-height: calc(100svh - 64px - (var(--about-hero-gap, 0.55rem) * 2));
+  display: flex;
+  align-items: stretch;
+}
+
+.heroSection > :global(.container) {
+  display: flex;
+  min-height: 100%;
+}
+
+.heroShell {
+  width: 100%;
+  min-height: 100%;
+}
+
+.heroContent {
+  padding: clamp(0.95rem, 1.8vw, 1.3rem);
+  min-height: 100%;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.heroTitle {
+  max-width: 17ch;
+  font-size: clamp(1.75rem, 6vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.heroLead {
+  max-width: 32rem;
+  color: var(--muted-light);
+  font-size: clamp(1rem, 1.95vw, 1.12rem);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.ctaPrimary,
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0 1.15rem;
+  border-radius: var(--radius-full);
+  font-size: 0.92rem;
+  font-weight: 700;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.ctaPrimary {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 82%, #000), color-mix(in srgb, var(--accent) 28%, var(--primary)));
+  color: #fff;
+  box-shadow: 0 18px 30px -18px color-mix(in srgb, var(--primary) 65%, #000);
+}
+
+.ctaPrimary:hover,
+.ctaSecondary:hover {
+  transform: translateY(-1px);
+}
+
+.ctaSecondary {
+  border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+}
+
+.heroPanel {
+  position: relative;
+  display: grid;
+  gap: 0.65rem;
+  padding: clamp(0.88rem, 1.65vw, 1.15rem);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: calc(var(--radius-xl) - 0.35rem);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-3) 92%, transparent), color-mix(in srgb, #081018 96%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.heroPanelTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.heroPanelKicker {
+  color: var(--primary);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroPanelTitle {
+  font-size: clamp(1.32rem, 2.25vw, 1.75rem);
+}
+
+.heroPanelText {
+  max-width: 24rem;
+  color: var(--text-muted);
+  font-size: clamp(0.98rem, 1.42vw, 1.06rem);
+}
+
+.heroTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.metricCard {
+  padding: 0.62rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+}
+
+.metricValue {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.18rem, 2.75vw, 1.62rem);
+  line-height: 1;
+}
+
+.metricLabel {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.splitGrid,
+.tripleGrid,
+.featureGrid,
+.techGrid,
+.securityGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+.splitCard,
+.featureCard,
+.techCard,
+.securityCard,
+.founderCard,
+.futureCard {
+  position: relative;
+  padding: clamp(1.2rem, 2.5vw, 1.5rem);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.splitCard:hover,
+.featureCard:hover,
+.techCard:hover,
+.securityCard:hover,
+.founderCard:hover,
+.futureCard:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
+  box-shadow: var(--shadow-md);
+}
+
+.cardAccent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
+  color: var(--primary);
+  margin-bottom: 1rem;
+}
+
+.cardTitle {
+  font-size: clamp(1.25rem, 3vw, 1.55rem);
+  margin-bottom: 0.5rem;
+}
+
+.cardText {
+  color: var(--text-muted);
+}
+
+.benefitList,
+.futureList,
+.founderList {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  color: var(--muted-light);
+}
+
+.listItem {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.listDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.48rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  flex-shrink: 0;
+}
+
+.stackNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+  flex-wrap: wrap;
+}
+
+.techIcon {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+}
+
+.techName {
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+.techText {
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+}
+
+.featureMeta {
+  margin-top: 0.85rem;
+  color: var(--muted-light);
+  font-size: 0.88rem;
+}
+
+.founderCard {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.founderTop {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.avatar {
+  width: 4.6rem;
+  height: 4.6rem;
+  border-radius: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  color: #fff;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 84%, #000), color-mix(in srgb, var(--accent) 38%, var(--primary)));
+  box-shadow: 0 18px 30px -20px color-mix(in srgb, var(--primary) 70%, #000);
+}
+
+.founderName {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+}
+
+.founderRole {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.founderBio {
+  color: var(--text-muted);
+  max-width: 44rem;
+}
+
+.futureCard {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 14%, transparent), transparent 40%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--accent) 14%, transparent), transparent 40%),
+    var(--panel-elevated);
+}
+
+.futureQuote {
+  max-width: 48rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  line-height: 1.14;
+  letter-spacing: -0.03em;
+}
+
+.futureList {
+  margin-top: 1.3rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+@media (min-width: 768px) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1.24fr) minmax(18rem, 0.76fr);
+    align-items: center;
+  }
+
+  .splitGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tripleGrid,
+  .featureGrid,
+  .securityGrid,
+  .techGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .heroSection {
+    height: calc(100svh - 64px - (var(--about-hero-gap, 0.55rem) * 2));
+    min-height: calc(100svh - 64px - (var(--about-hero-gap, 0.55rem) * 2));
+  }
+
+  .heroTitle {
+    max-width: 18ch;
+    font-size: clamp(2.15rem, 3.55vw, 3.3rem);
+  }
+
+  .heroLead {
+    font-size: clamp(1.04rem, 1.05vw, 1.12rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .heroSection {
+    min-height: auto;
+    height: auto;
+    align-items: stretch;
+  }
+
+  .heroGrid {
+    gap: 1.2rem;
+  }
+
+  .heroTitle {
+    max-width: 18ch;
+    font-size: clamp(1.5rem, 7.8vw, 2.2rem);
+    line-height: 1.02;
+  }
+
+  .heroPanelTop {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heroActions {
+    flex-direction: column;
+  }
+
+  .ctaPrimary,
+  .ctaSecondary {
+    width: 100%;
+  }
+
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+}
