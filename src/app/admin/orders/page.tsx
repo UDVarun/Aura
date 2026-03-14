@@ -1,6 +1,10 @@
-import { Search, Filter } from "lucide-react";
+"use client";
+
+import { useEffect, useState, Suspense } from "react";
+import { Search, Filter, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import styles from "../products/page.module.css";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, parsePriceValue } from "@/lib/currency";
 
 interface AdminOrderRow {
@@ -30,28 +34,62 @@ const STATUS_MAP: Record<string, string> = {
     refund_requested: "badge-red",
 };
 
-export default async function AdminOrdersPage() {
-    const supabase = await createServerSupabase();
-    const { data } = await supabase
-        .from("order_items")
-        .select("id, product_title, line_total, status, shipment_status, created_at, orders(order_number, shipping_address)")
-        .order("created_at", { ascending: false })
-        .limit(100);
+function AdminOrdersContent() {
+    const searchParams = useSearchParams();
+    const [orders, setOrders] = useState<AdminOrderRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+    const supabase = createClient();
 
-    const orders = (data as AdminOrderRow[] | null) ?? [];
+    useEffect(() => {
+        async function fetchOrders() {
+            setLoading(true);
+            const { data } = await supabase
+                .from("order_items")
+                .select("id, product_title, line_total, status, shipment_status, created_at, orders(order_number, shipping_address)")
+                .order("created_at", { ascending: false })
+                .limit(200);
+
+            if (data) setOrders(data as any);
+            setLoading(false);
+        }
+        fetchOrders();
+    }, [supabase]);
+
+    const filteredOrders = orders.filter(o => 
+        (o.orders?.order_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.product_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (o.orders?.shipping_address?.email || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (loading) {
+        return (
+            <div className={styles.page}>
+                <div className="flex-center" style={{ height: "400px" }}>
+                    <Loader2 className="animate-spin" size={40} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.page}>
             <div className={styles.pageHeader}>
                 <div>
                     <h1 className={styles.pageTitle}>Orders</h1>
-                    <p className={styles.pageSubtitle}>{orders.length} tracked order lines across the marketplace</p>
+                    <p className={styles.pageSubtitle}>{filteredOrders.length} tracked order lines match your view</p>
                 </div>
             </div>
             <div className={styles.toolbar}>
                 <div className={styles.searchWrap}>
                     <Search size={15} className={styles.searchIcon} />
-                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} readOnly />
+                    <input 
+                        type="search" 
+                        placeholder="Search orders, customers..." 
+                        className={`input ${styles.searchInput}`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
                 <button className="btn btn-secondary"><Filter size={15} /> Live queue</button>
             </div>
@@ -69,7 +107,7 @@ export default async function AdminOrdersPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {orders.map((order) => {
+                            {filteredOrders.map((order) => {
                                 const shipping = order.orders?.shipping_address;
                                 const customerName = [shipping?.firstName, shipping?.lastName].filter(Boolean).join(" ") || "Aura customer";
                                 return (
@@ -84,13 +122,13 @@ export default async function AdminOrdersPage() {
                                         <td className={styles.productName}>{order.product_title}</td>
                                         <td>{new Date(order.created_at).toLocaleDateString("en-IN")}</td>
                                         <td><span className={styles.amount}>{formatCurrency(parsePriceValue(order.line_total))}</span></td>
-                                        <td><span className={`badge ${STATUS_MAP[order.status] ?? "badge-blue"}`}>{order.status}</span></td>
+                                        <td><span className={`badge ${STATUS_MAP[order.status.toLowerCase()] ?? "badge-blue"}`}>{order.status}</span></td>
                                     </tr>
                                 );
                             })}
-                            {orders.length === 0 && (
+                            {filteredOrders.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className={styles.emptyCell}>No orders have been placed yet.</td>
+                                    <td colSpan={6} className={styles.emptyCell}>No orders found.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -98,5 +136,19 @@ export default async function AdminOrdersPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function AdminOrdersPage() {
+    return (
+        <Suspense fallback={
+            <div className={styles.page}>
+                <div className="flex-center" style={{ height: "400px" }}>
+                    <Loader2 className="animate-spin" size={40} />
+                </div>
+            </div>
+        }>
+            <AdminOrdersContent />
+        </Suspense>
     );
 }

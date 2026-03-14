@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
 import styles from "../products/page.module.css";
 import { formatCurrency } from "@/lib/currency";
@@ -15,8 +17,15 @@ const STATUS_MAP: Record<string, string> = {
     refund_requested: "badge-red",
 };
 
-export default function VendorOrdersPage() {
+function VendorOrdersContent() {
+    const searchParams = useSearchParams();
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
     const { orders, loading } = useVendor();
+
+    const filteredOrders = orders.filter(o => 
+        (o.orders?.order_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.product_title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     if (loading) {
         return (
@@ -33,13 +42,19 @@ export default function VendorOrdersPage() {
             <div className={styles.pageHeader}>
                 <div>
                     <h1 className={styles.pageTitle}>My Orders</h1>
-                    <p className={styles.pageSubtitle}>{orders.length} order lines require vendor visibility.</p>
+                    <p className={styles.pageSubtitle}>{filteredOrders.length} order lines match your view.</p>
                 </div>
             </div>
             <div className={styles.toolbar}>
                 <div className={styles.searchWrap}>
                     <Search size={15} className={styles.searchIcon} />
-                    <input type="search" placeholder="Search orders..." className={`input ${styles.searchInput}`} readOnly />
+                    <input 
+                        type="search" 
+                        placeholder="Search orders..." 
+                        className={`input ${styles.searchInput}`} 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
             </div>
             <div className={styles.tableCard}>
@@ -56,7 +71,7 @@ export default function VendorOrdersPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {orders.map((order) => {
+                            {filteredOrders.map((order) => {
                                 const shipping = order.orders?.shipping_address;
                                 const customerName = shipping 
                                     ? [shipping.firstName, shipping.lastName].filter(Boolean).join(" ") 
@@ -78,9 +93,9 @@ export default function VendorOrdersPage() {
                                     </tr>
                                 );
                             })}
-                            {orders.length === 0 && (
+                            {filteredOrders.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className={styles.emptyCell}>No vendor orders yet.</td>
+                                    <td colSpan={6} className={styles.emptyCell}>No vendor orders match your search.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -88,5 +103,19 @@ export default function VendorOrdersPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function VendorOrdersPage() {
+    return (
+        <Suspense fallback={
+            <div className={styles.page}>
+                <div style={{ display: "flex", justifyContent: "center", padding: "4rem" }}>
+                    <Loader2 className="animate-spin" size={40} />
+                </div>
+            </div>
+        }>
+            <VendorOrdersContent />
+        </Suspense>
     );
 }
