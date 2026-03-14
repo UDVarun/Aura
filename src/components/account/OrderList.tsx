@@ -54,9 +54,14 @@ export function OrderList() {
                 <span className={`${styles.status} ${styles[order.status.toLowerCase()]}`}>
                   {order.status}
                 </span>
-                <Link href={`/account/orders/${order.id}`} className={styles.detailsBtn}>
-                  Details <ChevronRight size={16} />
-                </Link>
+                <div className={styles.cardActions}>
+                  <Link href={`/account/orders/${order.id}`} className={styles.detailsBtn}>
+                    Details <ChevronRight size={16} />
+                  </Link>
+                  <Link href={`/account/issues/new?orderId=${order.id}`} className={styles.reportBtn}>
+                    Report Issue
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

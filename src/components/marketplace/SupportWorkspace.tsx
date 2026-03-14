@@ -158,15 +158,18 @@ export function SupportWorkspace({
             )
             .on("presence", { event: "sync" }, () => {
                 const state = channel.presenceState();
-                const typing: Record<string, boolean> = {};
-                Object.values(state).forEach((presences: any) => {
-                    presences.forEach((p: any) => {
-                        if (p.isTyping && p.userId !== (supabase.auth.getSession().then(({data}) => data.session?.user.id))) {
-                            typing[p.role] = true;
-                        }
+                supabase.auth.getUser().then(({ data }) => {
+                    const typing: Record<string, boolean> = {};
+                    const userId = data.user?.id;
+                    Object.values(state).forEach((presences: any) => {
+                        presences.forEach((p: any) => {
+                            if (p.isTyping && p.userId !== userId) {
+                                typing[p.role] = true;
+                            }
+                        });
                     });
+                    setTypingUsers(typing);
                 });
-                setTypingUsers(typing);
             })
             .subscribe(async (status) => {
                 if (status === "SUBSCRIBED") {
@@ -202,7 +205,11 @@ export function SupportWorkspace({
             });
             const data = await res.json();
             if (res.ok) {
-                setMessages(prev => [...prev, data.message]);
+                // Safeguard against duplicate addition if realtime event already fired
+                setMessages(prev => {
+                    if (prev.find(m => m.id === data.message.id)) return prev;
+                    return [...prev, data.message];
+                });
                 setMessageBody("");
             }
         } finally {
@@ -210,13 +217,34 @@ export function SupportWorkspace({
         }
     };
 
+    const handleUpdateStatus = async (newStatus: string) => {
+        if (!selectedCaseId || submitting) return;
+        setSubmitting(true);
+        try {
+            const res = await fetch(`/api/issues/${selectedCaseId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                setCases(prev => prev.map(c => c.id === selectedCaseId ? { ...c, status: newStatus } : c));
+                // Add a local history item or just let realtime handle it if implemented
+                // For now, manual update is safer for UI feedback
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const getStatusColor = (status: string) => {
-        switch (status) {
-            case "open": return "badge-blue";
-            case "waiting_for_vendor": return "badge-yellow";
-            case "escalated": return "badge-red";
-            case "resolved": return "badge-green";
-            case "closed": return "badge-gray";
+        const s = status.toUpperCase();
+        switch (s) {
+            case "OPEN": return "badge-blue";
+            case "VENDOR_REVIEW": return "badge-yellow";
+            case "IN_PROGRESS": return "badge-purple";
+            case "ESCALATED": return "badge-red";
+            case "RESOLVED": return "badge-green";
+            case "CLOSED": return "badge-gray";
             default: return "badge-blue";
         }
     };
@@ -449,7 +477,15 @@ export function SupportWorkspace({
                                 <div className={styles.detailLabel}>Order Reference</div>
                                 <div className={styles.detailValue}>
                                     {selectedCase.order_id ? (
-                                        <a href={`/account/orders/${selectedCase.order_id}`} className="flex-center" style={{ gap: "0.25rem", color: "var(--primary)" }}>
+                                        <a 
+                                           href={
+                                               role === "customer" ? `/account/orders/${selectedCase.order_id}` :
+                                               role === "vendor" ? `/vendor/orders?search=${selectedCase.order_id}` :
+                                               `/admin/orders?search=${selectedCase.order_id}`
+                                           } 
+                                           className="flex-center" 
+                                           style={{ gap: "0.25rem", color: "var(--primary)" }}
+                                        >
                                             View Order <ExternalLink size={14} />
                                         </a>
                                     ) : (
@@ -457,6 +493,32 @@ export function SupportWorkspace({
                                     )}
                                 </div>
                             </div>
+
+                            {role !== "customer" && selectedCase.status !== "CLOSED" && (
+                               <div className={styles.actionPanel}>
+                                   <hr style={{ border: "0", borderTop: "1px solid var(--border)", margin: "1rem 0" }} />
+                                   <div className={styles.detailLabel} style={{ marginBottom: "0.75rem" }}>Actions</div>
+                                   <div className="flex-center" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+                                       {selectedCase.status !== "RESOLVED" && (
+                                           <button 
+                                               className="btn btn-primary btn-sm"
+                                               onClick={() => handleUpdateStatus("RESOLVED")}
+                                               disabled={submitting}
+                                           >
+                                               <CheckCircle2 size={14} /> Mark Resolved
+                                           </button>
+                                       )}
+                                       <button 
+                                           className="btn btn-secondary btn-sm"
+                                           onClick={() => handleUpdateStatus("CLOSED")}
+                                           disabled={submitting}
+                                           style={{ color: "var(--danger)" }}
+                                       >
+                                           <AlertCircle size={14} /> Close Case
+                                       </button>
+                                   </div>
+                               </div>
+                            )}
                             
                             <hr style={{ border: "0", borderTop: "1px solid var(--border)", margin: "1rem 0" }} />
                             

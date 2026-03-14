@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, MessageSquare, ShieldCheck, Truck, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { SupportWorkspace } from "@/components/marketplace/SupportWorkspace";
 import { GuidedCaseCreation } from "@/components/marketplace/GuidedCaseCreation";
@@ -15,28 +15,7 @@ type OrderSummary = {
   placed_at: string;
 };
 
-const PILLARS = [
-  {
-    title: "Protected escalations",
-    desc: "Every seller conversation, refund request, and dispute stays inside Aura for evidence-backed resolution.",
-    Icon: ShieldCheck,
-  },
-  {
-    title: "Vendor accountability",
-    desc: "Support cases route directly to the responsible seller first, then escalate to admin when SLA or trust issues appear.",
-    Icon: MessageSquare,
-  },
-  {
-    title: "Order issue recovery",
-    desc: "Wrong item, damage, delivery failure, or suspicious seller activity can be reported from one workflow.",
-    Icon: AlertTriangle,
-  },
-  {
-    title: "Fulfillment visibility",
-    desc: "Support is tied to live order states, shipment updates, and post-delivery review history.",
-    Icon: Truck,
-  },
-];
+
 
 export default function CustomerCarePage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -64,9 +43,13 @@ export default function CustomerCarePage() {
       if (res.ok) {
         setIsCreating(false);
         setRefreshKey(prev => prev + 1); // Trigger refresh in workspace
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create case");
       }
     } catch (err) {
       console.error("Failed to create case:", err);
+      throw err;
     }
   };
 
@@ -84,20 +67,7 @@ export default function CustomerCarePage() {
         </div>
       </section>
 
-      <section className={`container ${styles.pillars}`}>
-        <h2 className={styles.sectionTitle}>Support principles</h2>
-        <div className={styles.grid}>
-          {PILLARS.map(({ title, desc, Icon }) => (
-            <article key={title} className={styles.card}>
-              <div className={styles.channelIcon}>
-                <Icon size={18} />
-              </div>
-              <h3>{title}</h3>
-              <p>{desc}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+
 
       <section className={styles.mainSection}>
         {isLoading ? (

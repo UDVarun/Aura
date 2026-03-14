@@ -118,14 +118,36 @@
 .shipped { background: #fef9c3; color: #854d0e; }
 .cancelled { background: #fee2e2; color: #991b1b; }
 
-.detailsBtn {
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.detailsBtn, .reportBtn {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--primary);
   text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.detailsBtn {
+  color: var(--primary);
+}
+
+.detailsBtn:hover {
+  text-decoration: underline;
+}
+
+.reportBtn {
+  color: var(--muted);
+}
+
+.reportBtn:hover {
+  color: var(--error);
 }
 
 .detailsBtn:hover {

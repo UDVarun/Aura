@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingBag, BarChart2, LogOut, ChevronRight, Store, MessageSquare, ArrowUpRight } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, BarChart2, LogOut, ChevronRight, Store, MessageSquare, ArrowUpRight, AlertCircle } from "lucide-react";
 import styles from "./layout.module.css";
 import { useAuth } from "@/context/AuthContext";
 import clsx from "clsx";
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
     { href: "/vendor", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: "/vendor/products", label: "My Products", icon: Package },
     { href: "/vendor/orders", label: "My Orders", icon: ShoppingBag },
+    { href: "/vendor/issues", label: "Customer Issues", icon: AlertCircle },
     { href: "/vendor/communications", label: "Communications", icon: MessageSquare },
     { href: "/vendor/analytics", label: "Analytics", icon: BarChart2 },
 ];

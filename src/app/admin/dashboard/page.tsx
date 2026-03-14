@@ -1,4 +1,7 @@
-﻿import { TrendingUp, ShoppingBag, Users, Package, ArrowUpRight, ArrowDownRight } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { TrendingUp, ShoppingBag, Users, Package, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import styles from "../page.module.css";
 import Link from "next/link";
 
@@ -61,36 +64,83 @@ export default function AdminDashboardPage() {
                 ))}
             </div>
 
-            <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Recent Orders</h2>
-                    <Link href="/admin/orders" className={styles.viewAll}>View all →</Link>
-                </div>
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Customer</th>
-                                <th>Product</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {RECENT_ORDERS.map((order) => (
-                                <tr key={order.id} className={styles.tableRow}>
-                                    <td><span className={styles.orderId}>{order.id}</span></td>
-                                    <td>{order.customer}</td>
-                                    <td className={styles.productCell}>{order.product}</td>
-                                    <td><span className={styles.amount}>{order.amount}</span></td>
-                                    <td><span className={`badge ${STATUS_COLORS[order.status]}`}>{order.status}</span></td>
+            <div className={styles.dashboardGrid}>
+                <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Recent Orders</h2>
+                        <Link href="/admin/orders" className={styles.viewAll}>View all →</Link>
+                    </div>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Product</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {RECENT_ORDERS.map((order) => (
+                                    <tr key={order.id} className={styles.tableRow}>
+                                        <td><span className={styles.orderId}>{order.id}</span></td>
+                                        <td>{order.customer}</td>
+                                        <td className={styles.productCell}>{order.product}</td>
+                                        <td><span className={styles.amount}>{order.amount}</span></td>
+                                        <td><span className={`badge ${STATUS_COLORS[order.status]}`}>{order.status}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Escalated Disputes</h2>
+                        <Link href="/admin/issues" className={styles.viewAll}>Manage all →</Link>
+                    </div>
+                    <AdminIssuesSummary />
                 </div>
             </div>
+        </div>
+    );
+}
+
+function AdminIssuesSummary() {
+    const [issues, setIssues] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchIssues() {
+            try {
+                const res = await fetch("/api/issues");
+                const data = await res.json();
+                if (res.ok) {
+                    setIssues(data.issues.filter((i: any) => i.status === "ESCALATED").slice(0, 5));
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchIssues();
+    }, []);
+
+    if (loading) return <div className={styles.emptyTable}>Loading disputes...</div>;
+    if (issues.length === 0) return <div className={styles.emptyTable}>No escalated disputes.</div>;
+
+    return (
+        <div className={styles.miniList}>
+            {issues.map(issue => (
+                <Link key={issue.id} href={`/admin/issues/${issue.id}`} className={styles.miniItem}>
+                    <div className={styles.miniMain}>
+                        <div className={styles.miniTitle}>{issue.subject}</div>
+                        <div className={styles.miniMeta}>Vendor: {issue.vendor?.full_name || issue.vendor_id?.slice(0, 8)}</div>
+                    </div>
+                    <div className={styles.miniPriority}>{issue.priority}</div>
+                </Link>
+            ))}
         </div>
     );
 }

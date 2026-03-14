@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 import { formatCurrency } from "@/lib/currency";
@@ -31,16 +32,16 @@ export default function VendorDashboardPage() {
             label: "New listing",
         },
         {
+            title: "Manage Issues",
+            description: "View and resolve customer complaints related to your products.",
+            href: "/vendor/issues",
+            label: "Go to Issues",
+        },
+        {
             title: "Edit catalog",
             description: "Update titles, descriptions, and prices for your own products.",
             href: "/vendor/products",
             label: "Manage products",
-        },
-        {
-            title: "Manage stock",
-            description: `${stats.lowStockItems} low-stock items need attention right now.`,
-            href: "/vendor/products",
-            label: "Update stock",
         },
         {
             title: "View orders",
@@ -59,13 +60,16 @@ export default function VendorDashboardPage() {
                         Manage your catalog and view a quick overview of your performance in real-time.
                     </p>
                 </div>
-                <Link href="/vendor/products" className={styles.heroButton}>
-                    Manage Products
-                    <ArrowRight size={16} />
-                </Link>
+                <div className={styles.headerActions}>
+                    <Link href="/vendor/products" className={styles.heroButton}>
+                        Manage Products
+                        <ArrowRight size={16} />
+                    </Link>
+                </div>
             </div>
 
             <div className={styles.statsGrid}>
+                {/* ... existing stats ... */}
                 <div className={`${styles.statCard} ${styles.stat_blue}`}>
                     <div className={styles.statHeader}>
                         <span className={styles.statLabel}>Products</span>
@@ -108,48 +112,90 @@ export default function VendorDashboardPage() {
                 ))}
             </div>
 
-            <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Top products</h2>
-                    <Link href="/vendor/products" className={styles.viewAll}>
-                        View all
-                    </Link>
-                </div>
-                <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Price</th>
-                                <th>Stock</th>
-                                <th>Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {products.slice(0, 5).map((product) => (
-                                <tr key={product.id} className={styles.tableRow}>
-                                    <td>{product.title}</td>
-                                    <td>{formatCurrency(product.price)}</td>
-                                    <td>{product.stock_quantity}</td>
-                                    <td>
-                                        <Stars 
-                                            rating={product.avg_rating || 0} 
-                                            count={product.review_count || 0} 
-                                            size={14} 
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
-                            {products.length === 0 && (
+            <div className={styles.dashboardGrid}>
+                <VendorIssuesSummary />
+                
+                <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Top products</h2>
+                        <Link href="/vendor/products" className={styles.viewAll}>
+                            View all
+                        </Link>
+                    </div>
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.table}>
+                            <thead>
                                 <tr>
-                                    <td colSpan={3} className={styles.emptyCell}>
-                                        No products yet.
-                                    </td>
+                                    <th>Title</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Rating</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {products.slice(0, 5).map((product) => (
+                                    <tr key={product.id} className={styles.tableRow}>
+                                        <td>{product.title}</td>
+                                        <td>{formatCurrency(product.price)}</td>
+                                        <td>{product.stock_quantity}</td>
+                                        <td>
+                                            <Stars 
+                                                rating={product.avg_rating || 0} 
+                                                count={product.review_count || 0} 
+                                                size={14} 
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function VendorIssuesSummary() {
+    const [issues, setIssues] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchIssues() {
+            const res = await fetch("/api/issues");
+            const data = await res.json();
+            if (res.ok) setIssues(data.issues.filter((i: any) => i.status !== "RESOLVED" && i.status !== "CLOSED").slice(0, 3));
+            setLoading(false);
+        }
+        fetchIssues();
+    }, []);
+
+    return (
+        <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Issues needing attention</h2>
+                <Link href="/vendor/issues" className={styles.viewAll}>
+                    Manage all
+                </Link>
+            </div>
+            <div className={styles.issuesList}>
+                {loading ? (
+                    <div className={styles.emptyCell}>Loading issues...</div>
+                ) : issues.length === 0 ? (
+                    <div className={styles.emptyCell}>No active issues. Good job!</div>
+                ) : (
+                    issues.map(issue => (
+                        <Link key={issue.id} href={`/vendor/issues/${issue.id}`} className={styles.issueItem}>
+                            <div className={styles.issueMain}>
+                                <span className={styles.issueSubject}>{issue.subject}</span>
+                                <span className={styles.issueMeta}>#{issue.id.slice(0, 8)} • {issue.priority}</span>
+                            </div>
+                            <span className={`badge badge-${issue.status.toLowerCase()}`}>
+                                {issue.status}
+                            </span>
+                        </Link>
+                    ))
+                )}
             </div>
         </div>
     );
